@@ -9,6 +9,10 @@ A multi-tenant SaaS service for coordinating multiple Waldur instances through f
 - **Transaction Monitoring** - Track cross-instance transactions in real-time (data sync, resource sharing, API calls)
 - **Health Monitoring & Alerting** - Detect connectivity issues, sync failures, and performance degradation
 
+## Documentation
+
+- **[User Guide](docs/user-guide.md)** — Comprehensive guide for federation administrators with screenshots covering all pages: Dashboard, Entities, Trust Chain Explorer, Policies, Trust Marks, Keys, and Health.
+
 ## Tech Stack
 
 | Component | Technology |
@@ -178,10 +182,6 @@ cd frontend && npm run build     # Output in dist/
 - `remote_customer` - Share customer/project data
 - `shared_offering` - Share service offerings
 - `usage_sync` - Synchronize usage and billing data
-
-## Documentation
-
-- **[User Guide](docs/user-guide.md)** — Comprehensive guide for federation administrators with screenshots covering all pages: Dashboard, Entities, Trust Chain Explorer, Policies, Trust Marks, Keys, and Health.
 
 ## License
 
