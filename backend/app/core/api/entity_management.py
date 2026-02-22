@@ -20,6 +20,7 @@ from app.core.schemas.entity import (
 from app.database import get_session
 from app.federation.jwt_builder import build_subordinate_statement
 from app.keys.manager import generate_key, get_active_key, get_entity_jwks, rotate_key
+from app.notifications.notifier import notify_instances
 
 router = APIRouter(prefix="/api/entities", tags=["Entity Management"])
 
@@ -225,6 +226,10 @@ async def activate_entity(
     # Generate subordinate statement from Trust Anchor
     await _generate_subordinate_statement(session, entity)
 
+    await notify_instances(
+        session, "entity.activated", {"entity_id": entity.entity_id, "entity_name": entity.name}
+    )
+
     return _entity_to_response(entity)
 
 
@@ -258,6 +263,11 @@ async def suspend_entity(
 
     await session.commit()
     await session.refresh(entity)
+
+    await notify_instances(
+        session, "entity.suspended", {"entity_id": entity.entity_id, "entity_name": entity.name}
+    )
+
     return _entity_to_response(entity)
 
 
@@ -291,6 +301,11 @@ async def revoke_entity(
 
     await session.commit()
     await session.refresh(entity)
+
+    await notify_instances(
+        session, "entity.revoked", {"entity_id": entity.entity_id, "entity_name": entity.name}
+    )
+
     return _entity_to_response(entity)
 
 

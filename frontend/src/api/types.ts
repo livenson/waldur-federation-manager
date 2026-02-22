@@ -185,6 +185,72 @@ export interface JWK {
   [key: string]: unknown;
 }
 
+// Federation Topology
+export type WaldurInstanceStatus = 'unknown' | 'healthy' | 'unhealthy';
+
+export interface WaldurInstance {
+  id: string;
+  name: string;
+  base_url: string;
+  status: WaldurInstanceStatus;
+  last_seen_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WaldurInstanceCreate {
+  name: string;
+  base_url: string;
+}
+
+export interface FederationEntityInfo {
+  entity_id: string;
+  isd_source: string | null;
+  trust_anchor_url: string | null;
+  is_active: boolean;
+}
+
+export interface InstanceHealth {
+  instance_id: string;
+  name: string;
+  base_url: string;
+  status: string;
+  trust_anchor_urls: string[];
+  entity_count: number;
+  user_count: number;
+  federation_entities: FederationEntityInfo[];
+}
+
+export interface TopologyNode {
+  id: string;
+  type: string;
+  label: string;
+  data: Record<string, unknown>;
+}
+
+export interface TopologyEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: string;
+  label: string | null;
+}
+
+export interface TopologySummary {
+  total_instances: number;
+  healthy_instances: number;
+  total_federations: number;
+  total_federation_entities: number;
+  total_users: number;
+}
+
+export interface TopologyResponse {
+  instances: InstanceHealth[];
+  nodes: TopologyNode[];
+  edges: TopologyEdge[];
+  summary: TopologySummary;
+}
+
 // Health / Dashboard
 export interface DashboardStats {
   entities: {

@@ -16,13 +16,14 @@ from app.core.models import (  # noqa: F401 — ensure all models are registered
     SubordinateStatement,
     TrustMark,
     TrustMarkDefinition,
+    WaldurInstance,
 )
 from app.database import init_db
 from app.exceptions import FederationError
 
 # Management API
 from app.core.api import entity_management, health, policy_management
-from app.core.api import statement_management, trust_mark_management
+from app.core.api import statement_management, topology, trust_mark_management
 
 # Federation protocol endpoints
 from app.federation.endpoints import (
@@ -158,6 +159,7 @@ app.include_router(policy_management.router)
 app.include_router(statement_management.router)
 app.include_router(trust_mark_management.router)
 app.include_router(health.router)
+app.include_router(topology.router)
 
 
 @app.get("/health", tags=["Health"])

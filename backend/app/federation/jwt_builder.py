@@ -2,6 +2,7 @@
 
 import json
 import time
+import uuid
 
 from authlib.jose import JsonWebKey, jwt
 
@@ -135,6 +136,37 @@ def build_trust_mark_jwt(
         return jwt.encode(header, payload, key).decode()
     except Exception as exc:
         raise JWTError(f"Failed to build trust mark: {exc}") from exc
+
+
+def build_notification_jwt(
+    issuer_entity_id: str,
+    signing_key: SigningKey,
+    event: str,
+    payload_fields: dict | None = None,
+    expires_in: int = 300,
+) -> str:
+    """Build a federation notification JWT for push delivery to instances."""
+    try:
+        now = int(time.time())
+        payload = {
+            "iss": issuer_entity_id,
+            "iat": now,
+            "exp": now + expires_in,
+            "jti": str(uuid.uuid4()),
+            "event": event,
+        }
+        if payload_fields:
+            payload.update(payload_fields)
+
+        header = {
+            "alg": signing_key.algorithm,
+            "kid": signing_key.kid,
+            "typ": "federation-notification+jwt",
+        }
+        key = _load_private_key(signing_key)
+        return jwt.encode(header, payload, key).decode()
+    except Exception as exc:
+        raise JWTError(f"Failed to build notification JWT: {exc}") from exc
 
 
 def build_resolve_response(

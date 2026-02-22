@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import {
-  Server, FileText, Shield, Key, AlertTriangle,
+  Server, FileText, Shield, Key, AlertTriangle, Network,
   Globe, Clock, GitFork, CheckCircle2, XCircle, RefreshCw, Activity,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDashboardStats, useExpiringItems } from '../hooks/useHealth';
+import { useTopologySummary } from '../hooks/useFederation';
 import { useEntities } from '../hooks/useEntities';
 import { useStatements } from '../hooks/useStatements';
 import { usePolicies, useEvaluatePolicy } from '../hooks/usePolicies';
@@ -26,6 +27,7 @@ function timeAgo(dateStr: string): string {
 export default function Dashboard() {
   const { data: stats, isLoading } = useDashboardStats();
   const { data: expiring } = useExpiringItems(3);
+  const { data: topologySummary } = useTopologySummary();
   const { data: entitiesData } = useEntities();
   const { data: statementsData } = useStatements();
   const { data: policiesData } = usePolicies();
@@ -230,6 +232,33 @@ export default function Dashboard() {
           help="Cryptographic keys (JWKs) used to sign Entity Configurations, subordinate statements, and trust marks. Each entity has its own key set."
         />
       </div>
+
+      {/* Federation Overview */}
+      {topologySummary && topologySummary.total_instances > 0 && (
+        <div className="bg-white rounded-lg shadow p-5 mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+              <Network className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Federation Instances</h3>
+              <p className="text-xs text-gray-500">
+                {topologySummary.healthy_instances}/{topologySummary.total_instances} connected
+                {' '}&middot;{' '}
+                {topologySummary.total_federations} federation{topologySummary.total_federations !== 1 ? 's' : ''}
+                {' '}&middot;{' '}
+                {topologySummary.total_users} users
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/federation"
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-500 whitespace-nowrap"
+          >
+            View Federation &rarr;
+          </Link>
+        </div>
+      )}
 
       {/* Expiring Items Warning */}
       {expiring && (expiring.statements.length > 0 || expiring.trust_marks.length > 0) && (

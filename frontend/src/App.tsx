@@ -9,6 +9,7 @@ import Policies from './pages/Policies';
 import PolicyEditor from './pages/PolicyEditor';
 import TrustMarks from './pages/TrustMarks';
 import Keys from './pages/Keys';
+import Federation from './pages/Federation';
 import Health from './pages/Health';
 import NotFound from './pages/NotFound';
 
@@ -17,6 +18,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Dashboard />} />
+        <Route path="federation" element={<Federation />} />
         <Route path="entities" element={<Entities />} />
         <Route path="entities/register" element={<EntityRegister />} />
         <Route path="entities/:entityId" element={<EntityDetail />} />

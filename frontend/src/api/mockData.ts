@@ -22,6 +22,8 @@ import type {
   TrustMark,
   DashboardStats,
   ExpiringItems,
+  WaldurInstance,
+  TopologyResponse,
 } from './types';
 
 // Helper to simulate API delay
@@ -1079,4 +1081,131 @@ export const mockExpiringItems: ExpiringItems = {
       expires_at: null,
     },
   ],
+};
+
+// ---------------------------------------------------------------------------
+// Federation Topology
+// ---------------------------------------------------------------------------
+
+export const mockWaldurInstances: WaldurInstance[] = [
+  {
+    id: 'inst-csc',
+    name: 'Waldur CSC',
+    base_url: 'http://localhost:9501',
+    status: 'healthy',
+    last_seen_at: isoDate(-60000),
+    created_at: '2025-01-10T08:00:00Z',
+    updated_at: isoDate(-60000),
+  },
+  {
+    id: 'inst-geant',
+    name: 'Waldur GEANT',
+    base_url: 'http://localhost:9502',
+    status: 'healthy',
+    last_seen_at: isoDate(-120000),
+    created_at: '2025-01-12T10:00:00Z',
+    updated_at: isoDate(-120000),
+  },
+  {
+    id: 'inst-desy',
+    name: 'Waldur DESY',
+    base_url: 'http://localhost:9503',
+    status: 'unhealthy',
+    last_seen_at: isoDate(-3600000),
+    created_at: '2025-01-15T11:00:00Z',
+    updated_at: isoDate(-3600000),
+  },
+  {
+    id: 'inst-surf',
+    name: 'Waldur SURF',
+    base_url: 'http://localhost:9504',
+    status: 'healthy',
+    last_seen_at: isoDate(-90000),
+    created_at: '2025-01-05T07:00:00Z',
+    updated_at: isoDate(-90000),
+  },
+];
+
+export const mockTopologyData: TopologyResponse = {
+  instances: [
+    {
+      instance_id: 'inst-csc',
+      name: 'Waldur CSC',
+      base_url: 'http://localhost:9501',
+      status: 'healthy',
+      trust_anchor_urls: ['http://localhost:9500'],
+      entity_count: 3,
+      user_count: 12,
+      federation_entities: [
+        { entity_id: 'https://federation.lumi.csc.fi', isd_source: null, trust_anchor_url: 'http://localhost:9500', is_active: true },
+        { entity_id: 'https://federation.cscs.ch', isd_source: null, trust_anchor_url: 'http://localhost:9500', is_active: true },
+        { entity_id: 'https://federation.bsc.es', isd_source: null, trust_anchor_url: 'http://localhost:9500', is_active: true },
+      ],
+    },
+    {
+      instance_id: 'inst-geant',
+      name: 'Waldur GEANT',
+      base_url: 'http://localhost:9502',
+      status: 'healthy',
+      trust_anchor_urls: ['http://localhost:9500'],
+      entity_count: 2,
+      user_count: 8,
+      federation_entities: [
+        { entity_id: 'https://federation.desy.de', isd_source: null, trust_anchor_url: 'http://localhost:9500', is_active: true },
+        { entity_id: 'https://federation.mpcdf.mpg.de', isd_source: null, trust_anchor_url: 'http://localhost:9500', is_active: true },
+      ],
+    },
+    {
+      instance_id: 'inst-desy',
+      name: 'Waldur DESY',
+      base_url: 'http://localhost:9503',
+      status: 'unhealthy',
+      trust_anchor_urls: ['http://localhost:9505'],
+      entity_count: 2,
+      user_count: 5,
+      federation_entities: [
+        { entity_id: 'https://federation.cineca.it', isd_source: null, trust_anchor_url: 'http://localhost:9505', is_active: true },
+        { entity_id: 'https://federation.tgcc.cea.fr', isd_source: null, trust_anchor_url: 'http://localhost:9505', is_active: true },
+      ],
+    },
+    {
+      instance_id: 'inst-surf',
+      name: 'Waldur SURF',
+      base_url: 'http://localhost:9504',
+      status: 'healthy',
+      trust_anchor_urls: ['http://localhost:9500', 'http://localhost:9505'],
+      entity_count: 4,
+      user_count: 15,
+      federation_entities: [
+        { entity_id: 'https://federation.surfsara.nl', isd_source: null, trust_anchor_url: 'http://localhost:9500', is_active: true },
+        { entity_id: 'https://federation.fz-juelich.de', isd_source: null, trust_anchor_url: 'http://localhost:9505', is_active: true },
+        { entity_id: 'https://federation.lumi.csc.fi', isd_source: null, trust_anchor_url: 'http://localhost:9500', is_active: true },
+        { entity_id: 'https://federation.cineca.it', isd_source: null, trust_anchor_url: 'http://localhost:9505', is_active: true },
+      ],
+    },
+  ],
+  nodes: [
+    // Trust Anchors
+    { id: 'ta-http://localhost:9500', type: 'trust_anchor', label: 'Federation A (localhost:9000)', data: { url: 'http://localhost:9500' } },
+    { id: 'ta-http://localhost:9505', type: 'trust_anchor', label: 'Federation B (localhost:9001)', data: { url: 'http://localhost:9505' } },
+    // Waldur Instances
+    { id: 'inst-inst-csc', type: 'waldur_instance', label: 'Waldur CSC', data: { base_url: 'http://localhost:9501', status: 'healthy', entity_count: 3, user_count: 12 } },
+    { id: 'inst-inst-geant', type: 'waldur_instance', label: 'Waldur GEANT', data: { base_url: 'http://localhost:9502', status: 'healthy', entity_count: 2, user_count: 8 } },
+    { id: 'inst-inst-desy', type: 'waldur_instance', label: 'Waldur DESY', data: { base_url: 'http://localhost:9503', status: 'unhealthy', entity_count: 2, user_count: 5 } },
+    { id: 'inst-inst-surf', type: 'waldur_instance', label: 'Waldur SURF', data: { base_url: 'http://localhost:9504', status: 'healthy', entity_count: 4, user_count: 15 } },
+  ],
+  edges: [
+    { id: 'edge-csc-a', source: 'inst-inst-csc', target: 'ta-http://localhost:9500', type: 'trusts', label: null },
+    { id: 'edge-geant-a', source: 'inst-inst-geant', target: 'ta-http://localhost:9500', type: 'trusts', label: null },
+    { id: 'edge-desy-b', source: 'inst-inst-desy', target: 'ta-http://localhost:9505', type: 'trusts', label: null },
+    { id: 'edge-surf-a', source: 'inst-inst-surf', target: 'ta-http://localhost:9500', type: 'trusts', label: null },
+    { id: 'edge-surf-b', source: 'inst-inst-surf', target: 'ta-http://localhost:9505', type: 'trusts', label: null },
+  ],
+  summary: {
+    total_instances: 4,
+    healthy_instances: 3,
+    total_federations: 2,
+    total_federation_entities: 11,
+    total_users: 40,
+  },
 };

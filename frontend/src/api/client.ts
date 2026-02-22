@@ -21,6 +21,10 @@ import type {
   TrustMarkListResponse,
   DashboardStats,
   ExpiringItems,
+  WaldurInstance,
+  WaldurInstanceCreate,
+  TopologyResponse,
+  TopologySummary,
 } from './types';
 import {
   mockEntities,
@@ -30,6 +34,8 @@ import {
   mockTrustMarks,
   mockDashboardStats,
   mockExpiringItems,
+  mockTopologyData,
+  mockWaldurInstances,
   delay,
 } from './mockData';
 
@@ -746,6 +752,68 @@ export const healthApi = {
       params: days !== undefined ? { days } : undefined,
     });
     return data;
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Topology API
+// ---------------------------------------------------------------------------
+
+export const topologyApi = {
+  getTopology: async (): Promise<TopologyResponse> => {
+    if (USE_MOCK) {
+      await delay(MOCK_DELAY);
+      return { ...mockTopologyData };
+    }
+    const { data } = await api.get<TopologyResponse>('/topology');
+    return data;
+  },
+
+  getSummary: async (): Promise<TopologySummary> => {
+    if (USE_MOCK) {
+      await delay(MOCK_DELAY);
+      return { ...mockTopologyData.summary };
+    }
+    const { data } = await api.get<TopologySummary>('/topology/summary');
+    return data;
+  },
+
+  listInstances: async (): Promise<WaldurInstance[]> => {
+    if (USE_MOCK) {
+      await delay(MOCK_DELAY);
+      return [...mockWaldurInstances];
+    }
+    const { data } = await api.get<WaldurInstance[]>('/topology/instances');
+    return data;
+  },
+
+  createInstance: async (payload: WaldurInstanceCreate): Promise<WaldurInstance> => {
+    if (USE_MOCK) {
+      await delay(MOCK_DELAY);
+      const newInstance: WaldurInstance = {
+        id: `inst-${Date.now()}`,
+        name: payload.name,
+        base_url: payload.base_url.replace(/\/$/, ''),
+        status: 'unknown',
+        last_seen_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      mockWaldurInstances.push(newInstance);
+      return { ...newInstance };
+    }
+    const { data } = await api.post<WaldurInstance>('/topology/instances', payload);
+    return data;
+  },
+
+  deleteInstance: async (id: string): Promise<void> => {
+    if (USE_MOCK) {
+      await delay(MOCK_DELAY);
+      const idx = mockWaldurInstances.findIndex((i) => i.id === id);
+      if (idx !== -1) mockWaldurInstances.splice(idx, 1);
+      return;
+    }
+    await api.delete(`/topology/instances/${id}`);
   },
 };
 

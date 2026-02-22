@@ -5,7 +5,7 @@ from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.models.entity import SubordinateStatement
+from app.core.models.entity import Entity, EntityStatus, SubordinateStatement
 from app.database import get_session
 from app.federation.constants import ENTITY_STATEMENT_JWT
 
@@ -30,6 +30,17 @@ async def fetch_subordinate_statement(
     statement = result.scalars().first()
 
     if not statement:
+        # Distinguish "never existed" (404) from "revoked" (410 Gone)
+        entity_result = await session.execute(
+            select(Entity).where(Entity.entity_id == sub)
+        )
+        entity = entity_result.scalars().first()
+        if entity and entity.status == EntityStatus.REVOKED:
+            return Response(
+                content='{"error": "Entity has been revoked"}',
+                status_code=410,
+                media_type="application/json",
+            )
         return Response(
             content='{"error": "No statement found for subject"}',
             status_code=404,
