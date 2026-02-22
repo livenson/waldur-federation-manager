@@ -33,14 +33,16 @@ backend/app/
 │   │   ├── statement.py        # SubordinateStatement (issuer→subject, JWT, is_current, expires_at)
 │   │   ├── signing_key.py      # SigningKey (kid, algorithm, encrypted private key)
 │   │   ├── trust_mark.py       # TrustMarkDefinition + TrustMark (JWT, status)
-│   │   └── metadata_policy.py  # MetadataPolicy (name, entity_type, policy JSON)
-│   ├── schemas/                # Pydantic request/response models
+│   │   ├── metadata_policy.py  # MetadataPolicy (name, entity_type, policy JSON)
+│   │   └── waldur_instance.py  # WaldurInstance (federation topology tracking)
+│   ├── schemas/                # Pydantic request/response models (entity, statement, policy, trust_mark, topology)
 │   └── api/                    # Management REST endpoints (/api/...)
 │       ├── entity_management.py    # /api/entities — CRUD, activate, suspend, revoke, rotate-keys
 │       ├── statement_management.py # /api/statements — issue, list, regenerate
 │       ├── policy_management.py    # /api/policies — CRUD, evaluate compliance
 │       ├── trust_mark_management.py# /api/trust-marks — definitions, issue, revoke
-│       └── health.py               # /api/health — dashboard stats, expiring items
+│       ├── health.py               # /api/health — dashboard stats, expiring items
+│       └── topology.py             # /api/topology — instance registration, topology graph
 ├── federation/
 │   ├── endpoints/              # OpenID Federation 1.0 protocol endpoints
 │   │   ├── entity_configuration.py # GET /.well-known/openid-federation
@@ -58,10 +60,19 @@ backend/app/
 ├── keys/
 │   ├── manager.py              # Key generation, rotation, JWKS building, RFC 7638 thumbprints
 │   └── storage.py              # Fernet encryption/decryption of private keys
-└── tasks/
-    ├── scheduler.py            # APScheduler setup (statement refresh, expiry monitoring)
-    ├── statement_refresh.py    # Auto-renew expiring statements
-    └── expiry_monitor.py       # Log warnings for near-expiry items
+├── tasks/
+│   ├── scheduler.py            # APScheduler setup (statement refresh, expiry monitoring)
+│   ├── statement_refresh.py    # Auto-renew expiring statements
+│   └── expiry_monitor.py       # Log warnings for near-expiry items
+├── notifications/
+│   └── notifier.py             # Push notification delivery to registered Waldur instances
+└── scenarios/
+    ├── router.py               # FastAPI router for listing/running scenarios (debug-only)
+    ├── __init__.py             # Scenario registry and @scenario decorator
+    ├── schemas.py              # ScenarioMeta, ScenarioStepResult models
+    ├── trust_anchor.py         # DB-only trust anchor scenarios
+    ├── federation.py           # Scenarios requiring mock Waldur instances
+    └── security.py             # Attack vector test scenarios
 ```
 
 ### Frontend Structure
@@ -80,18 +91,22 @@ frontend/src/
 │   ├── usePolicies.ts          # Policy CRUD + evaluate
 │   ├── useTrustMarks.ts        # Trust mark definitions + issuance
 │   ├── useHealth.ts            # Dashboard stats, expiring items
-│   └── useTrustChainGraph.ts   # Graph layout for visualization
+│   ├── useTrustChainGraph.ts   # Graph layout for visualization
+│   ├── useFederation.ts        # Topology API (instances, topology graph)
+│   └── useScenarios.ts         # Scenario listing and execution
 ├── pages/
 │   ├── Dashboard.tsx           # Overview: stats, health, compliance, distributions, activity
 │   ├── Entities.tsx            # Entity list with filtering
-│   ├── EntityDetail.tsx        # Single entity: details, keys, statements, actions
+│   ├── EntityDetail.tsx        # Single entity: details, keys, statements, policy display, actions
 │   ├── EntityRegister.tsx      # Registration form
-│   ├── TrustChainExplorer.tsx  # Interactive graph (@xyflow + Dagre)
+│   ├── Federation.tsx          # Federation topology: instance cards, topology graph (@xyflow + Dagre)
+│   ├── TrustChainExplorer.tsx  # Interactive trust chain graph (@xyflow + Dagre)
 │   ├── Policies.tsx            # Policy list + compliance
 │   ├── PolicyEditor.tsx        # Create/edit with JSON editor
 │   ├── TrustMarks.tsx          # Define, issue, revoke
 │   ├── Keys.tsx                # Key management + rotation history
 │   ├── Health.tsx              # System health + expiry timeline
+│   ├── Scenarios.tsx           # Debug scenario runner with step status
 │   └── NotFound.tsx
 └── components/
     ├── Layout.tsx / Sidebar.tsx    # App shell with navigation
@@ -101,18 +116,20 @@ frontend/src/
     ├── HelpTip.tsx                 # Info tooltips
     ├── JsonEditor.tsx / PolicyBuilder.tsx
     ├── TagInput.tsx                # Multi-value input
-    └── flow/                       # Trust chain graph components
+    └── flow/                       # Graph components (@xyflow)
         ├── EntityNode.tsx / TrustAnchorNode.tsx
+        ├── WaldurInstanceNode.tsx   # Topology graph instance node
         ├── TrustChainEdge.tsx / SubordinateEdge.tsx
         ├── NodeDetailPanel.tsx / EdgeDetailPanel.tsx
+        ├── TopologyDetailPanel.tsx  # Federation topology detail panel
         └── useGraphLayout.ts       # Dagre layout algorithm
 ```
 
 ### Routes
 
-**Frontend**: `/` `/entities` `/entities/register` `/entities/:id` `/trust-chain` `/policies` `/policies/new` `/policies/:id` `/trust-marks` `/keys` `/health`
+**Frontend**: `/` `/federation` `/entities` `/entities/register` `/entities/:id` `/trust-chain` `/policies` `/policies/new` `/policies/:id` `/trust-marks` `/keys` `/health` `/scenarios`
 
-**Backend Management API** (prefixed `/api`): entities, statements, policies, trust-marks, health
+**Backend Management API** (prefixed `/api`): entities, statements, policies, trust-marks, health, topology, scenarios
 
 **Federation Protocol**: `/.well-known/openid-federation`, `/federation/fetch`, `/federation/list`, `/federation/resolve`, `/federation/historical_keys`, `/federation/trust_mark_status`, `/federation/trust_mark_list`
 
@@ -171,6 +188,10 @@ docker-compose --profile dev up  # Development (adds frontend-dev :3000 with hot
 **Trust Chain Resolution**: Walks authority_hints from subject to trust anchor. Supports local DB resolution and remote HTTP federation endpoints. Max depth configurable (default 5).
 
 **Metadata Policy Operators** (OIDC Federation 1.0 spec): `value`, `add`, `default`, `one_of`, `subset_of`, `superset_of`, `essential`.
+
+**Federation Topology**: WaldurInstance model tracks registered Waldur deployments. Topology API builds a graph of instances and their trust anchor relationships. Push notifications sent on lifecycle events (entity activation/suspension/revocation, instance registration/removal).
+
+**Scenarios**: Debug-only (`DEBUG=true`) scenario runner. Scenarios are registered via `@scenario` decorator in `backend/app/scenarios/`. Categories: trust_anchor (DB-only), federation (requires mock instances), security (attack vector tests).
 
 ## Configuration
 
