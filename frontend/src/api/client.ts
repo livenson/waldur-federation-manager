@@ -25,6 +25,8 @@ import type {
   WaldurInstanceCreate,
   TopologyResponse,
   TopologySummary,
+  ScenarioListResponse,
+  ScenarioRunResponse,
 } from './types';
 import {
   mockEntities,
@@ -36,6 +38,8 @@ import {
   mockExpiringItems,
   mockTopologyData,
   mockWaldurInstances,
+  mockScenarios,
+  mockScenarioResults,
   delay,
 } from './mockData';
 
@@ -814,6 +818,34 @@ export const topologyApi = {
       return;
     }
     await api.delete(`/topology/instances/${id}`);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Scenario API
+// ---------------------------------------------------------------------------
+
+export const scenarioApi = {
+  list: async (): Promise<ScenarioListResponse> => {
+    if (USE_MOCK) {
+      await delay(MOCK_DELAY);
+      return { scenarios: [...mockScenarios] };
+    }
+    const { data } = await api.get<ScenarioListResponse>('/scenarios');
+    return data;
+  },
+
+  run: async (id: string): Promise<ScenarioRunResponse> => {
+    if (USE_MOCK) {
+      await delay(1500); // Simulate longer run time
+      const result = mockScenarioResults[id];
+      if (!result) throw new Error(`Scenario '${id}' not found`);
+      return { ...result };
+    }
+    const { data } = await api.post<ScenarioRunResponse>(
+      `/scenarios/${id}/run`,
+    );
+    return data;
   },
 };
 

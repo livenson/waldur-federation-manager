@@ -8,6 +8,7 @@ import {
   Shield,
   Key,
   Activity,
+  Play,
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { LucideIcon } from 'lucide-react';
@@ -26,6 +27,10 @@ interface NavGroup {
 const standalone: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
 ];
+
+const debugGroup: NavGroup | null = import.meta.env.DEV
+  ? { label: 'Debug', items: [{ name: 'Scenarios', href: '/scenarios', icon: Play }] }
+  : null;
 
 const navGroups: NavGroup[] = [
   {
@@ -124,6 +129,21 @@ export default function Sidebar() {
             </div>
           </div>
         ))}
+
+        {/* Debug group — dev mode only */}
+        {debugGroup && (
+          <div className="mt-6">
+            <h3 className="px-3 mb-1 text-[11px] font-semibold uppercase tracking-wider text-amber-500 hidden lg:block">
+              {debugGroup.label}
+            </h3>
+            <div className="hidden lg:hidden h-px bg-gray-200 mx-3 my-2 block max-lg:block" />
+            <div className="space-y-1">
+              {debugGroup.items.map((item) => (
+                <NavLinkItem key={item.name} item={item} />
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
     </aside>
   );

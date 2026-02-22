@@ -25,6 +25,10 @@ export const queryKeys = {
     stats: ['health', 'stats'] as const,
     expiring: (days?: number) => ['health', 'expiring', days] as const,
   },
+  scenarios: {
+    all: ['scenarios'] as const,
+    list: ['scenarios', 'list'] as const,
+  },
   topology: {
     all: ['topology'] as const,
     data: ['topology', 'data'] as const,

@@ -36,6 +36,7 @@ from app.federation.endpoints import (
     trust_mark_status,
 )
 
+from app.scenarios.router import router as scenario_router
 from app.tasks.scheduler import scheduler, setup_scheduler
 
 logger = logging.getLogger(__name__)
@@ -160,6 +161,7 @@ app.include_router(statement_management.router)
 app.include_router(trust_mark_management.router)
 app.include_router(health.router)
 app.include_router(topology.router)
+app.include_router(scenario_router)
 
 
 @app.get("/health", tags=["Health"])

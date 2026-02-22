@@ -24,6 +24,8 @@ import type {
   ExpiringItems,
   WaldurInstance,
   TopologyResponse,
+  ScenarioMeta,
+  ScenarioRunResponse,
 } from './types';
 
 // Helper to simulate API delay
@@ -1207,5 +1209,131 @@ export const mockTopologyData: TopologyResponse = {
     total_federations: 2,
     total_federation_entities: 11,
     total_users: 40,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Scenarios
+// ---------------------------------------------------------------------------
+
+export const mockScenarios: ScenarioMeta[] = [
+  { id: 'ta-register-activate', name: 'Register & Activate Entity', description: 'Create an entity, activate it, and verify that a subordinate statement and signing key are generated.', category: 'Trust Anchor', requires_mock_instances: false },
+  { id: 'ta-entity-lifecycle', name: 'Entity Lifecycle', description: 'Walk an entity through the full lifecycle: create → activate → suspend → reactivate → revoke.', category: 'Trust Anchor', requires_mock_instances: false },
+  { id: 'ta-key-rotation', name: 'Key Rotation', description: 'Create and activate an entity, rotate its signing key, and verify the old key is ROTATED while the new key is ACTIVE.', category: 'Trust Anchor', requires_mock_instances: false },
+  { id: 'ta-trust-mark-lifecycle', name: 'Trust Mark Lifecycle', description: 'Create a trust mark definition, issue a trust mark to an entity, verify it is active, then revoke it.', category: 'Trust Anchor', requires_mock_instances: false },
+  { id: 'ta-instance-lifecycle', name: 'Instance Lifecycle', description: 'Register a Waldur instance, verify it appears in the list, then delete it and verify removal.', category: 'Trust Anchor', requires_mock_instances: false },
+  { id: 'fed-identity-push', name: 'Identity Push', description: 'Register an entity, build an identity JWT, push it to the mock Waldur instance, and verify acceptance.', category: 'Federation', requires_mock_instances: true },
+  { id: 'fed-multi-isd', name: 'Multi-ISD Aggregation', description: 'Create two entities, push the same user identity from both, and verify that attribute sources are merged.', category: 'Federation', requires_mock_instances: true },
+  { id: 'sec-expired-jwt', name: 'Expired JWT Attack', description: 'Build a JWT with a past expiration time and push it to mock Waldur. Expects rejection (401).', category: 'Security', requires_mock_instances: true },
+  { id: 'sec-invalid-signature', name: 'Invalid Signature Attack', description: 'Sign a JWT with an unregistered key and push it to mock Waldur. Expects rejection (401).', category: 'Security', requires_mock_instances: true },
+  { id: 'sec-unknown-entity', name: 'Unknown Entity Attack', description: 'Build a JWT from a non-existent entity and push it to mock Waldur. Expects rejection (401/403).', category: 'Security', requires_mock_instances: true },
+  { id: 'sec-policy-violation', name: 'Policy Violation', description: 'Create an entity with a metadata policy requiring email, then push with empty email. Expects rejection (422).', category: 'Security', requires_mock_instances: true },
+];
+
+export const mockScenarioResults: Record<string, ScenarioRunResponse> = {
+  'ta-register-activate': {
+    scenario_id: 'ta-register-activate', scenario_name: 'Register & Activate Entity', status: 'passed', duration_ms: 48.2,
+    steps: [
+      { name: 'Create entity', status: 'passed', detail: 'Created https://scenario-abc123.example.com', duration_ms: 12.1 },
+      { name: 'Generate signing key', status: 'passed', detail: 'kid=abc123', duration_ms: 8.5 },
+      { name: 'Activate entity', status: 'passed', detail: 'Status → active', duration_ms: 5.3 },
+      { name: 'Issue subordinate statement', status: 'passed', detail: 'JWT length=842', duration_ms: 15.2 },
+      { name: 'Verify signing key', status: 'passed', detail: 'Active key kid=abc123', duration_ms: 3.1 },
+    ],
+  },
+  'ta-entity-lifecycle': {
+    scenario_id: 'ta-entity-lifecycle', scenario_name: 'Entity Lifecycle', status: 'passed', duration_ms: 35.6,
+    steps: [
+      { name: 'Create entity (draft)', status: 'passed', detail: 'Created https://scenario-def456.example.com', duration_ms: 10.2 },
+      { name: 'Activate', status: 'passed', detail: 'Status → active', duration_ms: 5.1 },
+      { name: 'Suspend', status: 'passed', detail: 'Status → suspended', duration_ms: 4.8 },
+      { name: 'Reactivate', status: 'passed', detail: 'Status → active', duration_ms: 4.9 },
+      { name: 'Revoke', status: 'passed', detail: 'Status → revoked', duration_ms: 5.0 },
+    ],
+  },
+  'ta-key-rotation': {
+    scenario_id: 'ta-key-rotation', scenario_name: 'Key Rotation', status: 'passed', duration_ms: 52.3,
+    steps: [
+      { name: 'Create entity with key', status: 'passed', detail: 'kid=old-key-123', duration_ms: 14.0 },
+      { name: 'Rotate key', status: 'passed', detail: 'New kid=new-key-456', duration_ms: 12.5 },
+      { name: 'Verify old key rotated', status: 'passed', detail: 'kid=old-key-123 status=rotated', duration_ms: 3.2 },
+      { name: 'Verify new key active', status: 'passed', detail: 'kid=new-key-456 status=active', duration_ms: 3.0 },
+      { name: 'Verify JWKS updated', status: 'passed', detail: 'JWKS keys: [new-key-456]', duration_ms: 3.1 },
+    ],
+  },
+  'ta-trust-mark-lifecycle': {
+    scenario_id: 'ta-trust-mark-lifecycle', scenario_name: 'Trust Mark Lifecycle', status: 'passed', duration_ms: 61.4,
+    steps: [
+      { name: 'Create trust mark definition', status: 'passed', detail: 'id=https://scenario-trustmark.example.com', duration_ms: 8.3 },
+      { name: 'Create + activate entity', status: 'passed', detail: 'entity=https://scenario-ghi789.example.com', duration_ms: 14.2 },
+      { name: 'Issue trust mark', status: 'passed', detail: 'JWT length=654', duration_ms: 15.1 },
+      { name: 'Verify trust mark active', status: 'passed', detail: 'status=active', duration_ms: 2.8 },
+      { name: 'Revoke trust mark', status: 'passed', detail: 'status=revoked', duration_ms: 5.2 },
+    ],
+  },
+  'ta-instance-lifecycle': {
+    scenario_id: 'ta-instance-lifecycle', scenario_name: 'Instance Lifecycle', status: 'passed', duration_ms: 28.7,
+    steps: [
+      { name: 'Create instance', status: 'passed', detail: 'url=https://scenario-instance.example.com', duration_ms: 8.4 },
+      { name: 'Verify instance in list', status: 'passed', detail: 'Found in database', duration_ms: 4.2 },
+      { name: 'Delete instance', status: 'passed', detail: 'Deleted successfully', duration_ms: 5.1 },
+      { name: 'Verify instance removed', status: 'passed', detail: 'Not found — confirmed deleted', duration_ms: 3.8 },
+    ],
+  },
+  'fed-identity-push': {
+    scenario_id: 'fed-identity-push', scenario_name: 'Identity Push', status: 'partial', duration_ms: 15.0,
+    steps: [
+      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:8000', duration_ms: 3.1 },
+      { name: 'Create entity', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Build identity JWT', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Register entity mapping', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Push identity', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+    ],
+  },
+  'fed-multi-isd': {
+    scenario_id: 'fed-multi-isd', scenario_name: 'Multi-ISD Aggregation', status: 'partial', duration_ms: 12.0,
+    steps: [
+      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:8000', duration_ms: 3.0 },
+      { name: 'Create entity A', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Create entity B', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Push identity from A', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Push identity from B', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Verify merged sources', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+    ],
+  },
+  'sec-expired-jwt': {
+    scenario_id: 'sec-expired-jwt', scenario_name: 'Expired JWT Attack', status: 'partial', duration_ms: 10.0,
+    steps: [
+      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:8000', duration_ms: 3.0 },
+      { name: 'Create entity', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Build expired JWT', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Push expired JWT', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+    ],
+  },
+  'sec-invalid-signature': {
+    scenario_id: 'sec-invalid-signature', scenario_name: 'Invalid Signature Attack', status: 'partial', duration_ms: 10.0,
+    steps: [
+      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:8000', duration_ms: 3.0 },
+      { name: 'Create entity', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Build JWT with wrong key', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Push invalid JWT', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+    ],
+  },
+  'sec-unknown-entity': {
+    scenario_id: 'sec-unknown-entity', scenario_name: 'Unknown Entity Attack', status: 'partial', duration_ms: 10.0,
+    steps: [
+      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:8000', duration_ms: 3.0 },
+      { name: 'Build JWT from unknown entity', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Push unknown entity JWT', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+    ],
+  },
+  'sec-policy-violation': {
+    scenario_id: 'sec-policy-violation', scenario_name: 'Policy Violation', status: 'partial', duration_ms: 10.0,
+    steps: [
+      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:8000', duration_ms: 3.0 },
+      { name: 'Create entity', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Build JWT without email', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+      { name: 'Push policy-violating identity', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
+    ],
   },
 };

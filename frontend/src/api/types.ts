@@ -251,6 +251,36 @@ export interface TopologyResponse {
   summary: TopologySummary;
 }
 
+// Scenarios
+export type ScenarioStepStatus = 'passed' | 'failed' | 'skipped';
+
+export interface ScenarioStepResult {
+  name: string;
+  status: ScenarioStepStatus;
+  detail: string;
+  duration_ms: number;
+}
+
+export interface ScenarioMeta {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  requires_mock_instances: boolean;
+}
+
+export interface ScenarioListResponse {
+  scenarios: ScenarioMeta[];
+}
+
+export interface ScenarioRunResponse {
+  scenario_id: string;
+  scenario_name: string;
+  status: 'passed' | 'failed' | 'partial';
+  steps: ScenarioStepResult[];
+  duration_ms: number;
+}
+
 // Health / Dashboard
 export interface DashboardStats {
   entities: {

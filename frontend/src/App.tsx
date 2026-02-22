@@ -11,6 +11,7 @@ import TrustMarks from './pages/TrustMarks';
 import Keys from './pages/Keys';
 import Federation from './pages/Federation';
 import Health from './pages/Health';
+import Scenarios from './pages/Scenarios';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
         <Route path="trust-marks" element={<TrustMarks />} />
         <Route path="keys" element={<Keys />} />
         <Route path="health" element={<Health />} />
+        <Route path="scenarios" element={<Scenarios />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
