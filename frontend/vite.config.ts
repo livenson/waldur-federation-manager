@@ -13,7 +13,15 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:9000',
+        changeOrigin: true,
+      },
+      '/.well-known': {
+        target: 'http://localhost:9000',
+        changeOrigin: true,
+      },
+      '/federation': {
+        target: 'http://localhost:9000',
         changeOrigin: true,
       },
     },

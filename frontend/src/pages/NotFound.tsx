@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Home, Search } from 'lucide-react';
+import { Home } from 'lucide-react';
 
 export default function NotFound() {
   return (
@@ -10,14 +10,10 @@ export default function NotFound() {
         <p className="mt-2 text-gray-600">
           Sorry, we couldn't find the page you're looking for.
         </p>
-        <div className="mt-8 flex justify-center gap-4">
+        <div className="mt-8">
           <Link to="/" className="btn-primary">
             <Home className="h-4 w-4 mr-2" />
             Go Home
-          </Link>
-          <Link to="/catalog" className="btn-secondary">
-            <Search className="h-4 w-4 mr-2" />
-            Browse Catalog
           </Link>
         </div>
       </div>

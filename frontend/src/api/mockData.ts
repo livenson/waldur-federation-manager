@@ -1,458 +1,1082 @@
 /**
- * Mock data for demos and development without backend.
+ * Mock data for development without a backend.
+ * All data models match the types in api/types.ts.
+ *
+ * Topology — cross-federation trust via a common Trust Anchor:
+ *
+ *                     EuroHPC JU Trust Anchor
+ *                     /                      \
+ *          EUDAT CDI Federation        EOSC EU Federation
+ *         /    |      |    \          /      |         \
+ *      LUMI  CSCS   BSC   DESY    CINECA  CEA/TGCC  JSC Jülich
+ *
+ * Trust between LUMI (EUDAT member) and CINECA (EOSC member) is
+ * established because both resolve up to the same Trust Anchor.
  */
 
 import type {
-  Federation,
-  WaldurInstance,
-  FederationConnection,
-  FederationTransaction,
-  FederationAlert,
+  Entity,
+  SubordinateStatement,
+  MetadataPolicy,
+  TrustMarkDefinition,
+  TrustMark,
   DashboardStats,
+  ExpiringItems,
 } from './types';
 
-// Sample federations
-export const mockFederations: Federation[] = [
-  {
-    id: 'fed-001',
-    name: 'European Research Cloud Federation',
-    slug: 'ercf',
-    description: 'Federation of European research computing infrastructure providers enabling seamless resource sharing across institutions.',
-    logo_url: null,
-    public_discovery: true,
-    require_approval: true,
-    require_tos_acceptance: true,
-    allow_auto_join: false,
-    terms_of_service: '# Federation Terms of Service\n\nBy joining this federation, you agree to:\n\n1. Share computing resources in good faith\n2. Maintain uptime and availability standards\n3. Report usage accurately\n4. Protect user data according to GDPR',
-    admin_email: 'admin@ercf.eu',
-    website_url: 'https://ercf.eu',
-    tos_url: 'https://ercf.eu/tos',
-    tos_version: '1.0',
-    status: 'active',
-    created_at: '2024-01-15T10:00:00Z',
-    instance_count: 5,
-    active_connections: 8,
-  },
-  {
-    id: 'fed-002',
-    name: 'Nordic HPC Alliance',
-    slug: 'nhpca',
-    description: 'Collaborative federation of Nordic HPC centers for shared computing resources.',
-    logo_url: null,
-    public_discovery: true,
-    require_approval: true,
-    require_tos_acceptance: true,
-    allow_auto_join: true,
-    terms_of_service: '# Nordic HPC Alliance Terms\n\nMembers must:\n\n- Provide fair-share access to resources\n- Participate in quarterly coordination meetings\n- Maintain API compatibility',
-    admin_email: 'contact@nhpca.org',
-    website_url: 'https://nhpca.org',
-    tos_url: 'https://nhpca.org/terms',
-    tos_version: '2.1',
-    status: 'active',
-    created_at: '2024-03-01T08:00:00Z',
-    instance_count: 3,
-    active_connections: 4,
-  },
-];
+// Helper to simulate API delay
+export const delay = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
-// Sample Waldur instances
-export const mockInstances: WaldurInstance[] = [
+// ---------------------------------------------------------------------------
+// Entities
+// ---------------------------------------------------------------------------
+
+export const mockEntities: Entity[] = [
+  // ── Trust Anchor ────────────────────────────────────────────────────────
   {
-    id: 'inst-001',
-    federation_id: 'fed-001',
-    name: 'CERN Cloud',
-    api_url: 'https://cloud.cern.ch/api',
-    homepage_url: 'https://cloud.cern.ch',
-    uuid: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-    version: '6.8.0',
-    organization_name: 'CERN',
-    country: 'CH',
-    description: 'CERN computing cloud providing research computing resources.',
-    logo_url: null,
-    admin_email: 'cloud-support@cern.ch',
-    capabilities: ['remote_customer', 'shared_offerings', 'usage_reporting'],
-    tags: ['hpc', 'physics', 'research'],
+    id: 'ent-eurohpc',
+    entity_id: 'https://federation.eurohpc-ju.europa.eu',
+    name: 'EuroHPC JU',
+    organization: 'European High Performance Computing Joint Undertaking',
+    country: 'EU',
+    entity_types: ['federation_entity'],
+    metadata: {
+      homepage: 'https://eurohpc-ju.europa.eu',
+      description:
+        'EuroHPC Joint Undertaking — top-level Trust Anchor for European HPC and research federations.',
+      federation_fetch_endpoint:
+        'https://federation.eurohpc-ju.europa.eu/federation/fetch',
+      federation_list_endpoint:
+        'https://federation.eurohpc-ju.europa.eu/federation/list',
+      federation_resolve_endpoint:
+        'https://federation.eurohpc-ju.europa.eu/federation/resolve',
+      federation_entity: {
+        contacts: ['trust-admin@eurohpc-ju.europa.eu'],
+        organization_name: 'European High Performance Computing Joint Undertaking',
+      },
+    },
+    jwks: {
+      keys: [
+        {
+          kty: 'EC',
+          kid: 'eurohpc-sig-2025',
+          alg: 'ES256',
+          use: 'sig',
+          crv: 'P-256',
+          x: 'Ag3ixJ2P8SoVH-7kMGfFpGr6C_yTg-ARbPNvsBazzfo',
+          y: 'ZL6mGRMHS0vW8K7BUQX6Fl3MNhMpg4_dONsKP-JBYUg',
+        },
+      ],
+    },
     status: 'active',
-    connection_status: 'online',
-    last_seen: '2024-06-15T14:30:00Z',
-    tos_accepted: true,
-    offering_count: 45,
-    customer_count: 120,
-    project_count: 350,
-    registered_at: '2024-01-20T10:00:00Z',
-    joined_at: '2024-01-20T10:30:00Z',
+    authority_hints: [],
+    contacts: ['trust-admin@eurohpc-ju.europa.eu'],
+    statement_expires_seconds: 2592000, // 30 days
+    created_at: '2024-06-01T00:00:00Z',
+    updated_at: '2025-02-01T08:00:00Z',
+  },
+
+  // ── Intermediate Authority — EUDAT ──────────────────────────────────────
+  {
+    id: 'ent-ta',
+    entity_id: 'https://federation.eudat.eu',
+    name: 'EUDAT CDI Federation',
+    organization: 'EUDAT CDI',
+    country: 'EU',
+    entity_types: ['federation_entity'],
+    metadata: {
+      homepage: 'https://www.eudat.eu',
+      description:
+        'EUDAT Collaborative Data Infrastructure — intermediate authority for the European research data federation.',
+      federation_fetch_endpoint:
+        'https://federation.eudat.eu/federation/fetch',
+      federation_list_endpoint:
+        'https://federation.eudat.eu/federation/list',
+      federation_resolve_endpoint:
+        'https://federation.eudat.eu/federation/resolve',
+      federation_entity: {
+        contacts: ['federation-admin@eudat.eu'],
+        organization_name: 'EUDAT CDI',
+      },
+    },
+    jwks: {
+      keys: [
+        {
+          kty: 'EC',
+          kid: 'eudat-sig-2025',
+          alg: 'ES256',
+          use: 'sig',
+          crv: 'P-256',
+          x: 'weNJy2HscCSM6AEDTDg04biOvhFhyyWvOHQfeF_PxMQ',
+          y: 'e8lnCO-AlStT-DBER57_vilrLYyKS1T_Ct95KJ7GD2g',
+        },
+      ],
+    },
+    status: 'active',
+    authority_hints: ['https://federation.eurohpc-ju.europa.eu'],
+    contacts: ['federation-admin@eudat.eu'],
+    statement_expires_seconds: 604800, // 7 days
+    created_at: '2024-12-01T00:00:00Z',
+    updated_at: '2025-02-18T08:00:00Z',
+  },
+
+  // ── Intermediate Authority — EOSC ───────────────────────────────────────
+  {
+    id: 'ent-eosc',
+    entity_id: 'https://federation.eosc.eu',
+    name: 'EOSC EU Federation',
+    organization: 'European Open Science Cloud',
+    country: 'EU',
+    entity_types: ['federation_entity'],
+    metadata: {
+      homepage: 'https://eosc.eu',
+      description:
+        'EOSC European Open Science Cloud — intermediate authority for open science service providers across Europe.',
+      federation_fetch_endpoint:
+        'https://federation.eosc.eu/federation/fetch',
+      federation_list_endpoint:
+        'https://federation.eosc.eu/federation/list',
+      federation_resolve_endpoint:
+        'https://federation.eosc.eu/federation/resolve',
+      federation_entity: {
+        contacts: ['federation@eosc.eu', 'security@eosc.eu'],
+        organization_name: 'European Open Science Cloud',
+      },
+    },
+    jwks: {
+      keys: [
+        {
+          kty: 'EC',
+          kid: 'eosc-sig-2025',
+          alg: 'ES256',
+          use: 'sig',
+          crv: 'P-256',
+          x: 'Q9Rv3biLRFk-sCrP-8HP1DGLucxf1ZiVR9TWOj9Xk7s',
+          y: 'y8sSHMkZjNzBx2bLG7dM5kUoVj36HfMN8bpaMqfLn58',
+        },
+      ],
+    },
+    status: 'active',
+    authority_hints: ['https://federation.eurohpc-ju.europa.eu'],
+    contacts: ['federation@eosc.eu', 'security@eosc.eu'],
+    statement_expires_seconds: 604800,
+    created_at: '2024-11-15T00:00:00Z',
+    updated_at: '2025-02-17T14:00:00Z',
+  },
+
+  // ── EUDAT member entities ───────────────────────────────────────────────
+
+  {
+    id: 'ent-001',
+    entity_id: 'https://federation.lumi.csc.fi',
+    name: 'LUMI Supercomputer',
+    organization: 'CSC - IT Center for Science',
+    country: 'FI',
+    entity_types: ['openid_provider', 'federation_entity'],
+    metadata: {
+      homepage: 'https://www.lumi-supercomputer.eu',
+      description:
+        'LUMI is one of the EuroHPC pre-exascale supercomputers, hosted in Kajaani, Finland.',
+      gpu_nodes: 2978,
+      peak_performance_pflops: 550,
+      openid_provider: {
+        scopes_supported: ['openid', 'profile', 'email', 'eduperson'],
+        id_token_signing_alg_values_supported: ['ES256'],
+        token_endpoint_auth_methods_supported: ['private_key_jwt'],
+      },
+      federation_entity: {
+        contacts: ['lumi-admin@csc.fi', 'federation-ops@csc.fi'],
+        organization_name: 'CSC - IT Center for Science',
+      },
+    },
+    jwks: {
+      keys: [
+        {
+          kty: 'EC',
+          kid: 'lumi-sig-2025',
+          alg: 'ES256',
+          use: 'sig',
+          crv: 'P-256',
+          x: 'f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU',
+          y: 'x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0',
+        },
+      ],
+    },
+    status: 'active',
+    authority_hints: ['https://federation.eudat.eu'],
+    contacts: ['lumi-admin@csc.fi', 'federation-ops@csc.fi'],
+    statement_expires_seconds: 86400,
+    created_at: '2025-01-10T08:00:00Z',
+    updated_at: '2025-02-18T12:30:00Z',
   },
   {
-    id: 'inst-002',
-    federation_id: 'fed-001',
-    name: 'ETH Zurich Research Cloud',
-    api_url: 'https://cloud.ethz.ch/api',
-    homepage_url: 'https://cloud.ethz.ch',
-    uuid: 'b2c3d4e5-f6a7-8901-bcde-f23456789012',
-    version: '6.7.2',
-    organization_name: 'ETH Zurich',
+    id: 'ent-002',
+    entity_id: 'https://federation.cscs.ch',
+    name: 'CSCS Swiss National Supercomputing Centre',
+    organization: 'CSCS / ETH Zurich',
     country: 'CH',
-    description: 'ETH research computing infrastructure for academic projects.',
-    logo_url: null,
-    admin_email: 'support@cloud.ethz.ch',
-    capabilities: ['remote_customer', 'shared_offerings'],
-    tags: ['research', 'academia', 'cloud'],
+    entity_types: ['openid_provider', 'federation_entity'],
+    metadata: {
+      homepage: 'https://www.cscs.ch',
+      description:
+        'CSCS operates the Swiss national supercomputing infrastructure in Lugano, Switzerland.',
+      flagship_system: 'Alps',
+      peak_performance_pflops: 600,
+      openid_provider: {
+        scopes_supported: ['openid', 'profile', 'email'],
+        id_token_signing_alg_values_supported: ['ES256', 'RS256'],
+        token_endpoint_auth_methods_supported: ['private_key_jwt'],
+      },
+      federation_entity: {
+        contacts: ['help@cscs.ch'],
+        organization_name: 'CSCS / ETH Zurich',
+      },
+    },
+    jwks: {
+      keys: [
+        {
+          kty: 'EC',
+          kid: 'cscs-sig-2025',
+          alg: 'ES256',
+          use: 'sig',
+          crv: 'P-256',
+          x: 'iGaLqP6y-SJCCBq8Yg2ArGBdf1oBPKsJ2gVJBL3viNA',
+          y: 'GHncWOJfrmB8-ft7UF5dfkDRkfB03lB9H2jYgUhIKNY',
+        },
+      ],
+    },
     status: 'active',
-    connection_status: 'online',
-    last_seen: '2024-06-15T14:28:00Z',
-    tos_accepted: true,
-    offering_count: 28,
-    customer_count: 85,
-    project_count: 210,
-    registered_at: '2024-02-01T08:00:00Z',
-    joined_at: '2024-02-01T09:00:00Z',
+    authority_hints: ['https://federation.eudat.eu'],
+    contacts: ['help@cscs.ch'],
+    statement_expires_seconds: 86400,
+    created_at: '2025-01-12T10:00:00Z',
+    updated_at: '2025-02-17T09:15:00Z',
   },
   {
-    id: 'inst-003',
-    federation_id: 'fed-001',
-    name: 'DESY Cloud Services',
-    api_url: 'https://cloud.desy.de/api',
-    homepage_url: 'https://cloud.desy.de',
-    uuid: 'c3d4e5f6-a7b8-9012-cdef-345678901234',
-    version: '6.8.0',
-    organization_name: 'DESY',
+    id: 'ent-003',
+    entity_id: 'https://federation.bsc.es',
+    name: 'Barcelona Supercomputing Center',
+    organization: 'BSC-CNS',
+    country: 'ES',
+    entity_types: ['openid_provider', 'federation_entity'],
+    metadata: {
+      homepage: 'https://www.bsc.es',
+      description:
+        'BSC-CNS hosts MareNostrum and leads HPC research in Spain and across Europe.',
+      flagship_system: 'MareNostrum 5',
+      peak_performance_pflops: 314,
+      openid_provider: {
+        scopes_supported: ['openid', 'profile'],
+        id_token_signing_alg_values_supported: ['ES256'],
+        token_endpoint_auth_methods_supported: ['private_key_jwt'],
+      },
+      federation_entity: {
+        contacts: ['support@bsc.es', 'federation@bsc.es'],
+        organization_name: 'BSC-CNS',
+      },
+    },
+    jwks: {
+      keys: [
+        {
+          kty: 'EC',
+          kid: 'bsc-sig-2025',
+          alg: 'ES256',
+          use: 'sig',
+          crv: 'P-256',
+          x: 'WbbaSStuffecKQV5U2LsG0zMAVp36nIx2VmIPg_X09Y',
+          y: 'bqXvyFpKf7PdN5JuHsR1YZjRRVFiqUpTAeeNLGma3Oc',
+        },
+      ],
+    },
+    status: 'active',
+    authority_hints: ['https://federation.eudat.eu'],
+    contacts: ['support@bsc.es', 'federation@bsc.es'],
+    statement_expires_seconds: 172800,
+    created_at: '2025-01-15T11:00:00Z',
+    updated_at: '2025-02-19T14:45:00Z',
+  },
+  {
+    id: 'ent-004',
+    entity_id: 'https://federation.desy.de',
+    name: 'DESY IT Infrastructure',
+    organization: 'Deutsches Elektronen-Synchrotron DESY',
     country: 'DE',
-    description: 'DESY research infrastructure for photon science and particle physics.',
-    logo_url: null,
-    admin_email: 'cloud@desy.de',
-    capabilities: ['remote_customer', 'shared_offerings', 'usage_reporting'],
-    tags: ['physics', 'photon-science', 'hpc'],
+    entity_types: ['openid_provider'],
+    metadata: {
+      homepage: 'https://www.desy.de',
+      description:
+        'DESY operates large-scale research infrastructure for photon science and particle physics in Hamburg and Zeuthen.',
+      research_areas: [
+        'photon_science',
+        'particle_physics',
+        'astroparticle_physics',
+      ],
+      openid_provider: {
+        scopes_supported: ['openid', 'profile', 'email'],
+        id_token_signing_alg_values_supported: ['ES256', 'RS384'],
+        token_endpoint_auth_methods_supported: ['private_key_jwt'],
+      },
+    },
+    jwks: {
+      keys: [
+        {
+          kty: 'EC',
+          kid: 'desy-sig-2025',
+          alg: 'ES256',
+          use: 'sig',
+          crv: 'P-256',
+          x: 'kSq-FZdHxU_v6-WUokJtXp2Rp7bLGtTbGdT4BjXkWeI',
+          y: 'T5euLbq_PXf2PmPBXpH5VNzGkFaZrYjHsTxKrCBQl7I',
+        },
+      ],
+    },
     status: 'active',
-    connection_status: 'degraded',
-    last_seen: '2024-06-15T14:25:00Z',
-    tos_accepted: true,
-    offering_count: 32,
-    customer_count: 65,
-    project_count: 180,
-    registered_at: '2024-02-15T09:00:00Z',
-    joined_at: '2024-02-15T10:00:00Z',
+    authority_hints: ['https://federation.eudat.eu'],
+    contacts: ['it-helpdesk@desy.de'],
+    statement_expires_seconds: 86400,
+    created_at: '2025-01-20T09:30:00Z',
+    updated_at: '2025-02-15T16:00:00Z',
+  },
+
+  // ── EOSC member entities ────────────────────────────────────────────────
+
+  {
+    id: 'ent-cineca',
+    entity_id: 'https://federation.cineca.it',
+    name: 'CINECA',
+    organization: 'CINECA Interuniversity Consortium',
+    country: 'IT',
+    entity_types: ['openid_provider', 'federation_entity'],
+    metadata: {
+      homepage: 'https://www.cineca.it',
+      description:
+        'CINECA is the largest Italian computing centre, hosting the Leonardo EuroHPC pre-exascale system.',
+      flagship_system: 'Leonardo',
+      peak_performance_pflops: 250,
+      openid_provider: {
+        scopes_supported: ['openid', 'profile', 'email'],
+        id_token_signing_alg_values_supported: ['ES256'],
+        token_endpoint_auth_methods_supported: ['private_key_jwt'],
+      },
+      federation_entity: {
+        contacts: ['hpc-support@cineca.it', 'federation@cineca.it'],
+        organization_name: 'CINECA Interuniversity Consortium',
+      },
+    },
+    jwks: {
+      keys: [
+        {
+          kty: 'EC',
+          kid: 'cineca-sig-2025',
+          alg: 'ES256',
+          use: 'sig',
+          crv: 'P-256',
+          x: 'FpV_4IiJH2dLrmZ7b6rYDeXuhk2JKGmkLyBz0f5TeDQ',
+          y: 'YSr4_EaGnVaO4P_jEWuQFMCC8e7GuUNVCXnw-HKGHCU',
+        },
+      ],
+    },
+    status: 'active',
+    authority_hints: ['https://federation.eosc.eu'],
+    contacts: ['hpc-support@cineca.it', 'federation@cineca.it'],
+    statement_expires_seconds: 86400,
+    created_at: '2025-01-08T09:00:00Z',
+    updated_at: '2025-02-19T10:00:00Z',
   },
   {
-    id: 'inst-004',
-    federation_id: 'fed-001',
-    name: 'CNRS Computing Grid',
-    api_url: 'https://compute.cnrs.fr/api',
-    homepage_url: 'https://compute.cnrs.fr',
-    uuid: 'd4e5f6a7-b8c9-0123-def4-567890123456',
-    version: '6.6.5',
-    organization_name: 'CNRS',
+    id: 'ent-cea',
+    entity_id: 'https://federation.tgcc.cea.fr',
+    name: 'CEA/TGCC',
+    organization: 'Commissariat à l\'énergie atomique - TGCC',
     country: 'FR',
-    description: 'French national research computing grid operated by CNRS.',
-    logo_url: null,
-    admin_email: 'grid@cnrs.fr',
-    capabilities: ['remote_customer', 'usage_reporting'],
-    tags: ['grid', 'research', 'france'],
+    entity_types: ['openid_provider', 'federation_entity'],
+    metadata: {
+      homepage: 'https://www-hpc.cea.fr/en/TGCC.html',
+      description:
+        'TGCC (Très Grand Centre de Calcul) is the French national computing centre operated by CEA, hosting Joliot-Curie.',
+      flagship_system: 'Joliot-Curie',
+      peak_performance_pflops: 22,
+      openid_provider: {
+        scopes_supported: ['openid', 'profile', 'email'],
+        id_token_signing_alg_values_supported: ['ES256'],
+        token_endpoint_auth_methods_supported: ['client_secret_basic'],
+      },
+      federation_entity: {
+        contacts: ['support-tgcc@cea.fr'],
+        organization_name: 'CEA - TGCC',
+      },
+    },
+    jwks: {
+      keys: [
+        {
+          kty: 'EC',
+          kid: 'cea-sig-2025',
+          alg: 'ES256',
+          use: 'sig',
+          crv: 'P-256',
+          x: 'VjCi_3qQPvg1-tfPqP8dX8_bDrjDBFMFx_H0bqdI5BY',
+          y: '5wJa_2d_BwFMTkdN3MFAa_G4Ceyb4T0J5V3JHQL-Bwk',
+        },
+      ],
+    },
     status: 'active',
-    connection_status: 'offline',
-    last_seen: '2024-06-15T10:00:00Z',
-    tos_accepted: true,
-    offering_count: 18,
-    customer_count: 95,
-    project_count: 220,
-    registered_at: '2024-03-01T10:00:00Z',
-    joined_at: '2024-03-01T11:00:00Z',
+    authority_hints: ['https://federation.eosc.eu'],
+    contacts: ['support-tgcc@cea.fr'],
+    statement_expires_seconds: 86400,
+    created_at: '2025-01-14T11:00:00Z',
+    updated_at: '2025-02-18T09:30:00Z',
   },
   {
-    id: 'inst-005',
-    federation_id: 'fed-001',
-    name: 'Max Planck Cloud',
-    api_url: 'https://cloud.mpg.de/api',
-    homepage_url: 'https://cloud.mpg.de',
-    uuid: 'e5f6a7b8-c9d0-1234-ef56-789012345678',
-    version: '6.7.8',
-    organization_name: 'Max Planck Society',
+    id: 'ent-jsc',
+    entity_id: 'https://federation.fz-juelich.de',
+    name: 'JSC Jülich Supercomputing Centre',
+    organization: 'Forschungszentrum Jülich',
     country: 'DE',
-    description: 'Max Planck computing cloud for fundamental research.',
-    logo_url: null,
-    admin_email: 'cloud-team@mpg.de',
-    capabilities: ['remote_customer', 'shared_offerings'],
-    tags: ['research', 'fundamental-science'],
-    status: 'pending',
-    connection_status: 'unknown',
-    last_seen: null,
-    tos_accepted: false,
-    offering_count: 0,
-    customer_count: 0,
-    project_count: 0,
-    registered_at: '2024-06-10T14:00:00Z',
-    joined_at: null,
-  },
-];
-
-// Sample connections
-export const mockConnections: FederationConnection[] = [
-  {
-    id: 'conn-001',
-    federation_id: 'fed-001',
-    source_instance_id: 'inst-001',
-    target_instance_id: 'inst-002',
-    connection_type: 'remote_customer',
-    state: 'active',
-    created_at: '2024-02-01T10:00:00Z',
-    established_at: '2024-02-01T10:05:00Z',
-    last_activity: '2024-06-15T14:20:00Z',
-    error_count: 0,
-  },
-  {
-    id: 'conn-002',
-    federation_id: 'fed-001',
-    source_instance_id: 'inst-001',
-    target_instance_id: 'inst-003',
-    connection_type: 'shared_offering',
-    state: 'active',
-    created_at: '2024-02-15T09:00:00Z',
-    established_at: '2024-02-15T09:10:00Z',
-    last_activity: '2024-06-15T14:15:00Z',
-    error_count: 0,
-  },
-  {
-    id: 'conn-003',
-    federation_id: 'fed-001',
-    source_instance_id: 'inst-002',
-    target_instance_id: 'inst-003',
-    connection_type: 'usage_sync',
-    state: 'active',
-    created_at: '2024-03-01T11:00:00Z',
-    established_at: '2024-03-01T11:02:00Z',
-    last_activity: '2024-06-15T14:00:00Z',
-    error_count: 1,
-  },
-  {
-    id: 'conn-004',
-    federation_id: 'fed-001',
-    source_instance_id: 'inst-003',
-    target_instance_id: 'inst-004',
-    connection_type: 'remote_customer',
-    state: 'failed',
-    created_at: '2024-04-01T08:00:00Z',
-    established_at: '2024-04-01T08:05:00Z',
-    last_activity: '2024-06-15T10:00:00Z',
-    error_count: 5,
-  },
-  {
-    id: 'conn-005',
-    federation_id: 'fed-001',
-    source_instance_id: 'inst-001',
-    target_instance_id: 'inst-004',
-    connection_type: 'shared_offering',
-    state: 'pending',
-    created_at: '2024-06-14T16:00:00Z',
-    established_at: null,
-    last_activity: null,
-    error_count: 0,
-  },
-];
-
-// Sample transactions
-export const mockTransactions: FederationTransaction[] = [
-  {
-    id: 'tx-001',
-    federation_id: 'fed-001',
-    source_instance_id: 'inst-001',
-    target_instance_id: 'inst-002',
-    transaction_type: 'customer_created',
-    status: 'completed',
-    created_at: '2024-06-15T14:20:00Z',
-    completed_at: '2024-06-15T14:20:05Z',
-    duration_ms: 5000,
-    error_message: null,
-  },
-  {
-    id: 'tx-002',
-    federation_id: 'fed-001',
-    source_instance_id: 'inst-002',
-    target_instance_id: 'inst-003',
-    transaction_type: 'usage_reported',
-    status: 'completed',
-    created_at: '2024-06-15T14:15:00Z',
-    completed_at: '2024-06-15T14:15:02Z',
-    duration_ms: 2000,
-    error_message: null,
-  },
-  {
-    id: 'tx-003',
-    federation_id: 'fed-001',
-    source_instance_id: 'inst-001',
-    target_instance_id: 'inst-003',
-    transaction_type: 'order_created',
-    status: 'in_progress',
-    created_at: '2024-06-15T14:30:00Z',
-    completed_at: null,
-    duration_ms: null,
-    error_message: null,
-  },
-  {
-    id: 'tx-004',
-    federation_id: 'fed-001',
-    source_instance_id: 'inst-003',
-    target_instance_id: 'inst-004',
-    transaction_type: 'sync_failed',
-    status: 'failed',
-    created_at: '2024-06-15T10:00:00Z',
-    completed_at: '2024-06-15T10:00:30Z',
-    duration_ms: 30000,
-    error_message: 'Connection timeout: Unable to reach target instance',
-  },
-  {
-    id: 'tx-005',
-    federation_id: 'fed-001',
-    source_instance_id: 'inst-001',
-    target_instance_id: null,
-    transaction_type: 'health_check',
-    status: 'completed',
-    created_at: '2024-06-15T14:25:00Z',
-    completed_at: '2024-06-15T14:25:01Z',
-    duration_ms: 1000,
-    error_message: null,
-  },
-];
-
-// Sample alerts
-export const mockAlerts: FederationAlert[] = [
-  {
-    id: 'alert-001',
-    federation_id: 'fed-001',
-    instance_id: 'inst-004',
-    severity: 'error',
+    entity_types: ['openid_provider', 'federation_entity'],
+    metadata: {
+      homepage: 'https://www.fz-juelich.de/jsc',
+      description:
+        'JSC is one of the three national supercomputing centres in Germany, hosting JUWELS and JUPITER.',
+      flagship_system: 'JUPITER',
+      peak_performance_pflops: 1000,
+      openid_provider: {
+        scopes_supported: ['openid', 'profile', 'email', 'eduperson'],
+        id_token_signing_alg_values_supported: ['ES256', 'ES384'],
+        token_endpoint_auth_methods_supported: ['private_key_jwt', 'self_signed_tls_client_auth'],
+      },
+      federation_entity: {
+        contacts: ['sc@fz-juelich.de', 'federation@fz-juelich.de'],
+        organization_name: 'Forschungszentrum Jülich',
+      },
+    },
+    jwks: {
+      keys: [
+        {
+          kty: 'EC',
+          kid: 'jsc-sig-2025',
+          alg: 'ES256',
+          use: 'sig',
+          crv: 'P-256',
+          x: 'UmmHnOAi0kM-oLDsrr80vKQ_R4_R_3e3gRkxoJXVHN4',
+          y: 'KimfG3p4-v0vFPGDvSZXJvxQWJDGLNBd6LPh-MxSKz8',
+        },
+      ],
+    },
     status: 'active',
-    alert_type: 'instance_offline',
-    title: "Instance 'CNRS Computing Grid' is offline",
-    description: 'The Waldur instance at https://compute.cnrs.fr/api is not responding. Last error: Connection timeout after 30 seconds.',
-    created_at: '2024-06-15T10:05:00Z',
-    acknowledged_at: null,
-    resolved_at: null,
+    authority_hints: ['https://federation.eosc.eu'],
+    contacts: ['sc@fz-juelich.de', 'federation@fz-juelich.de'],
+    statement_expires_seconds: 172800,
+    created_at: '2025-01-11T08:00:00Z',
+    updated_at: '2025-02-20T07:00:00Z',
+  },
+
+  // ── Draft & revoked entities ────────────────────────────────────────────
+
+  {
+    id: 'ent-005',
+    entity_id: 'https://federation.mpcdf.mpg.de',
+    name: 'Max Planck Computing and Data Facility',
+    organization: 'Max Planck Society',
+    country: 'DE',
+    entity_types: ['openid_provider', 'federation_entity'],
+    metadata: {
+      homepage: 'https://www.mpcdf.mpg.de',
+      description:
+        'MPCDF provides computing, data management, and IT services for the Max Planck Society institutes.',
+      flagship_system: 'Raven / Cobra',
+      research_focus: 'fundamental_research',
+      federation_entity: {
+        contacts: ['helpdesk@mpcdf.mpg.de'],
+      },
+    },
+    jwks: {
+      keys: [
+        {
+          kty: 'EC',
+          kid: 'mpcdf-sig-2025',
+          alg: 'ES256',
+          use: 'sig',
+          crv: 'P-256',
+          x: '4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM',
+          y: 'BIGzmjU0t_DqHGFSEZgUmg8HSQVuUdY4HZ0Cqm6TEAM',
+        },
+      ],
+    },
+    status: 'draft',
+    authority_hints: [],
+    contacts: ['helpdesk@mpcdf.mpg.de'],
+    statement_expires_seconds: null,
+    created_at: '2025-02-01T13:00:00Z',
+    updated_at: '2025-02-10T10:20:00Z',
   },
   {
-    id: 'alert-002',
-    federation_id: 'fed-001',
-    instance_id: 'inst-003',
-    severity: 'warning',
-    status: 'active',
-    alert_type: 'instance_degraded',
-    title: "Instance 'DESY Cloud Services' is experiencing high latency",
-    description: 'Response times have exceeded 5 seconds. Average response time: 6.2 seconds over the last 15 minutes.',
-    created_at: '2024-06-15T13:45:00Z',
-    acknowledged_at: null,
-    resolved_at: null,
-  },
-  {
-    id: 'alert-003',
-    federation_id: 'fed-001',
-    instance_id: null,
-    severity: 'warning',
-    status: 'acknowledged',
-    alert_type: 'connection_failed',
-    title: 'Connection between DESY and CNRS has failed',
-    description: 'The connection has failed after 5 consecutive errors. Last error: Target instance unreachable.',
-    created_at: '2024-06-15T10:10:00Z',
-    acknowledged_at: '2024-06-15T10:30:00Z',
-    resolved_at: null,
-  },
-  {
-    id: 'alert-004',
-    federation_id: 'fed-001',
-    instance_id: 'inst-002',
-    severity: 'info',
-    status: 'resolved',
-    alert_type: 'tos_update',
-    title: 'Terms of Service updated',
-    description: 'The federation Terms of Service has been updated to version 1.0. Instance administrators should review the changes.',
-    created_at: '2024-06-01T08:00:00Z',
-    acknowledged_at: '2024-06-01T09:00:00Z',
-    resolved_at: '2024-06-02T10:00:00Z',
+    id: 'ent-006',
+    entity_id: 'https://federation.surfsara.nl',
+    name: 'SURF Research Infrastructure',
+    organization: 'SURF',
+    country: 'NL',
+    entity_types: ['openid_provider'],
+    metadata: {
+      homepage: 'https://www.surf.nl',
+      description:
+        'SURF provides ICT infrastructure and services to Dutch education and research institutions. Formerly SURFsara.',
+      flagship_system: 'Snellius',
+    },
+    jwks: {
+      keys: [
+        {
+          kty: 'EC',
+          kid: 'surf-sig-2024',
+          alg: 'ES256',
+          use: 'sig',
+          crv: 'P-256',
+          x: 'SVqB4JcUD6lsfvqMr-OKUNUphdNn64Eay60978ZlL74',
+          y: 'lf0u0pMj4lGAzZix5u4Cm5CMQIgMNpkwy163wtKYVKI',
+        },
+      ],
+    },
+    status: 'revoked',
+    authority_hints: ['https://federation.eudat.eu'],
+    contacts: ['helpdesk@surf.nl'],
+    statement_expires_seconds: 86400,
+    created_at: '2025-01-05T07:00:00Z',
+    updated_at: '2025-02-20T11:00:00Z',
   },
 ];
 
-// Dashboard stats
-export const mockDashboardStats: Record<string, DashboardStats> = {
-  'fed-001': {
-    federation: {
-      id: 'fed-001',
-      name: 'European Research Cloud Federation',
-      slug: 'ercf',
-      status: 'active',
+// ---------------------------------------------------------------------------
+// Subordinate Statements
+// ---------------------------------------------------------------------------
+
+const now = new Date();
+const oneDayMs = 86400 * 1000;
+
+function isoDate(offset: number): string {
+  return new Date(now.getTime() + offset).toISOString();
+}
+
+export const mockStatements: SubordinateStatement[] = [
+  // ── Trust Anchor → Intermediate Authorities ─────────────────────────────
+
+  {
+    id: 'stmt-ta-eudat',
+    issuer_entity_id: 'https://federation.eurohpc-ju.europa.eu',
+    subject_entity_id: 'https://federation.eudat.eu',
+    metadata_override: { organization_name: 'EUDAT CDI' },
+    metadata_policy: {
+      federation_entity: {
+        contacts: { essential: true },
+        organization_name: { essential: true },
+      },
     },
-    instances: {
-      total: 5,
-      active: 4,
-      online: 2,
-      offline: 1,
-      degraded: 1,
+    constraints: { max_path_length: 2 },
+    trust_marks: [],
+    issued_at: isoDate(-5 * oneDayMs),
+    expires_at: isoDate(25 * oneDayMs),
+    jwt: 'eyJhbGciOiJFUzI1NiIsImtpZCI6ImV1cm9ocGMtc2lnLTIwMjUifQ.eyJpc3MiOiJodHRwczovL2ZlZGVyYXRpb24uZXVyb2hwYy1qdS5ldXJvcGEuZXUiLCJzdWIiOiJodHRwczovL2ZlZGVyYXRpb24uZXVkYXQuZXUifQ.mock_sig_eurohpc_eudat',
+    is_current: true,
+  },
+  {
+    id: 'stmt-ta-eosc',
+    issuer_entity_id: 'https://federation.eurohpc-ju.europa.eu',
+    subject_entity_id: 'https://federation.eosc.eu',
+    metadata_override: { organization_name: 'European Open Science Cloud' },
+    metadata_policy: {
+      federation_entity: {
+        contacts: { essential: true },
+        organization_name: { essential: true },
+      },
     },
-    connections: {
-      total: 5,
-      active: 3,
-      pending: 1,
-      failed: 1,
+    constraints: { max_path_length: 2 },
+    trust_marks: [],
+    issued_at: isoDate(-4 * oneDayMs),
+    expires_at: isoDate(26 * oneDayMs),
+    jwt: 'eyJhbGciOiJFUzI1NiIsImtpZCI6ImV1cm9ocGMtc2lnLTIwMjUifQ.eyJpc3MiOiJodHRwczovL2ZlZGVyYXRpb24uZXVyb2hwYy1qdS5ldXJvcGEuZXUiLCJzdWIiOiJodHRwczovL2ZlZGVyYXRpb24uZW9zYy5ldSJ9.mock_sig_eurohpc_eosc',
+    is_current: true,
+  },
+
+  // ── EUDAT → leaf entities ───────────────────────────────────────────────
+
+  {
+    id: 'stmt-001',
+    issuer_entity_id: 'https://federation.eudat.eu',
+    subject_entity_id: 'https://federation.lumi.csc.fi',
+    metadata_override: { organization_name: 'CSC - IT Center for Science' },
+    metadata_policy: {
+      openid_provider: {
+        contacts: { add: ['federation-ops@csc.fi'] },
+      },
     },
-    transactions_24h: {
-      total: 156,
-      completed: 148,
-      failed: 5,
-      in_progress: 3,
+    constraints: { max_path_length: 0 },
+    trust_marks: [],
+    issued_at: isoDate(-2 * oneDayMs),
+    expires_at: isoDate(5 * oneDayMs),
+    jwt: 'eyJhbGciOiJFUzI1NiIsImtpZCI6ImV1ZGF0LXNpZy0yMDI1In0.eyJpc3MiOiJodHRwczovL2ZlZGVyYXRpb24uZXVkYXQuZXUiLCJzdWIiOiJodHRwczovL2ZlZGVyYXRpb24ubHVtaS5jc2MuZmkifQ.mock_signature_lumi',
+    is_current: true,
+  },
+  {
+    id: 'stmt-002',
+    issuer_entity_id: 'https://federation.eudat.eu',
+    subject_entity_id: 'https://federation.cscs.ch',
+    metadata_override: { organization_name: 'CSCS / ETH Zurich' },
+    metadata_policy: {},
+    constraints: { max_path_length: 0 },
+    trust_marks: [],
+    issued_at: isoDate(-3 * oneDayMs),
+    expires_at: isoDate(4 * oneDayMs),
+    jwt: 'eyJhbGciOiJFUzI1NiIsImtpZCI6ImV1ZGF0LXNpZy0yMDI1In0.eyJpc3MiOiJodHRwczovL2ZlZGVyYXRpb24uZXVkYXQuZXUiLCJzdWIiOiJodHRwczovL2ZlZGVyYXRpb24uY3Njcy5jaCJ9.mock_signature_cscs',
+    is_current: true,
+  },
+  {
+    id: 'stmt-003',
+    issuer_entity_id: 'https://federation.eudat.eu',
+    subject_entity_id: 'https://federation.bsc.es',
+    metadata_override: {},
+    metadata_policy: {
+      openid_provider: {
+        contacts: { add: ['federation@bsc.es'] },
+      },
     },
-    active_alerts: {
-      info: 0,
-      warning: 2,
-      error: 1,
-      critical: 0,
+    constraints: {},
+    trust_marks: [],
+    issued_at: isoDate(-1 * oneDayMs),
+    expires_at: isoDate(13 * oneDayMs),
+    jwt: 'eyJhbGciOiJFUzI1NiIsImtpZCI6ImV1ZGF0LXNpZy0yMDI1In0.eyJpc3MiOiJodHRwczovL2ZlZGVyYXRpb24uZXVkYXQuZXUiLCJzdWIiOiJodHRwczovL2ZlZGVyYXRpb24uYnNjLmVzIn0.mock_signature_bsc',
+    is_current: true,
+  },
+  {
+    id: 'stmt-004',
+    issuer_entity_id: 'https://federation.eudat.eu',
+    subject_entity_id: 'https://federation.desy.de',
+    metadata_override: { organization_name: 'DESY' },
+    metadata_policy: {},
+    constraints: { max_path_length: 0 },
+    trust_marks: [],
+    issued_at: isoDate(-5 * oneDayMs),
+    expires_at: isoDate(2 * oneDayMs),
+    jwt: 'eyJhbGciOiJFUzI1NiIsImtpZCI6ImV1ZGF0LXNpZy0yMDI1In0.eyJpc3MiOiJodHRwczovL2ZlZGVyYXRpb24uZXVkYXQuZXUiLCJzdWIiOiJodHRwczovL2ZlZGVyYXRpb24uZGVzeS5kZSJ9.mock_signature_desy',
+    is_current: true,
+  },
+  {
+    id: 'stmt-005',
+    issuer_entity_id: 'https://federation.eudat.eu',
+    subject_entity_id: 'https://federation.surfsara.nl',
+    metadata_override: {},
+    metadata_policy: {},
+    constraints: {},
+    trust_marks: [],
+    issued_at: isoDate(-30 * oneDayMs),
+    expires_at: isoDate(-2 * oneDayMs),
+    jwt: 'eyJhbGciOiJFUzI1NiIsImtpZCI6ImV1ZGF0LXNpZy0yMDI1In0.eyJpc3MiOiJodHRwczovL2ZlZGVyYXRpb24uZXVkYXQuZXUiLCJzdWIiOiJodHRwczovL2ZlZGVyYXRpb24uc3VyZnNhcmEubmwifQ.mock_signature_surf',
+    is_current: false,
+  },
+
+  // ── EOSC → leaf entities ────────────────────────────────────────────────
+
+  {
+    id: 'stmt-eosc-cineca',
+    issuer_entity_id: 'https://federation.eosc.eu',
+    subject_entity_id: 'https://federation.cineca.it',
+    metadata_override: { organization_name: 'CINECA Interuniversity Consortium' },
+    metadata_policy: {
+      openid_provider: {
+        contacts: { essential: true },
+      },
+    },
+    constraints: { max_path_length: 0 },
+    trust_marks: [],
+    issued_at: isoDate(-3 * oneDayMs),
+    expires_at: isoDate(11 * oneDayMs),
+    jwt: 'eyJhbGciOiJFUzI1NiIsImtpZCI6ImVvc2Mtc2lnLTIwMjUifQ.eyJpc3MiOiJodHRwczovL2ZlZGVyYXRpb24uZW9zYy5ldSIsInN1YiI6Imh0dHBzOi8vZmVkZXJhdGlvbi5jaW5lY2EuaXQifQ.mock_sig_eosc_cineca',
+    is_current: true,
+  },
+  {
+    id: 'stmt-eosc-cea',
+    issuer_entity_id: 'https://federation.eosc.eu',
+    subject_entity_id: 'https://federation.tgcc.cea.fr',
+    metadata_override: { organization_name: 'CEA - TGCC' },
+    metadata_policy: {},
+    constraints: { max_path_length: 0 },
+    trust_marks: [],
+    issued_at: isoDate(-2 * oneDayMs),
+    expires_at: isoDate(12 * oneDayMs),
+    jwt: 'eyJhbGciOiJFUzI1NiIsImtpZCI6ImVvc2Mtc2lnLTIwMjUifQ.eyJpc3MiOiJodHRwczovL2ZlZGVyYXRpb24uZW9zYy5ldSIsInN1YiI6Imh0dHBzOi8vZmVkZXJhdGlvbi50Z2NjLmNlYS5mciJ9.mock_sig_eosc_cea',
+    is_current: true,
+  },
+  {
+    id: 'stmt-eosc-jsc',
+    issuer_entity_id: 'https://federation.eosc.eu',
+    subject_entity_id: 'https://federation.fz-juelich.de',
+    metadata_override: { organization_name: 'Forschungszentrum Jülich' },
+    metadata_policy: {
+      openid_provider: {
+        contacts: { add: ['federation@fz-juelich.de'] },
+      },
+    },
+    constraints: { max_path_length: 0 },
+    trust_marks: [],
+    issued_at: isoDate(-1 * oneDayMs),
+    expires_at: isoDate(6 * oneDayMs),
+    jwt: 'eyJhbGciOiJFUzI1NiIsImtpZCI6ImVvc2Mtc2lnLTIwMjUifQ.eyJpc3MiOiJodHRwczovL2ZlZGVyYXRpb24uZW9zYy5ldSIsInN1YiI6Imh0dHBzOi8vZmVkZXJhdGlvbi5mei1qdWVsaWNoLmRlIn0.mock_sig_eosc_jsc',
+    is_current: true,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Metadata Policies
+// ---------------------------------------------------------------------------
+
+export const mockPolicies: MetadataPolicy[] = [
+  {
+    id: 'pol-001',
+    name: 'EuroHPC OpenID Provider Baseline',
+    description:
+      'Baseline metadata policy for all OpenID Providers joining the EuroHPC federation. Enforces required scopes and signing algorithms.',
+    entity_type: 'openid_provider',
+    policy: {
+      id_token_signing_alg_values_supported: {
+        subset_of: ['ES256', 'ES384', 'RS256'],
+        default: ['ES256'],
+      },
+      scopes_supported: {
+        superset_of: ['openid', 'profile', 'email'],
+      },
+      token_endpoint_auth_methods_supported: {
+        subset_of: ['private_key_jwt', 'self_signed_tls_client_auth'],
+      },
+    },
+    created_at: '2025-01-10T08:00:00Z',
+    updated_at: '2025-02-01T14:00:00Z',
+  },
+  {
+    id: 'pol-002',
+    name: 'Federation Entity Contacts',
+    description:
+      'Policy requiring all federation entities to publish at least one administrative contact.',
+    entity_type: 'federation_entity',
+    policy: {
+      contacts: {
+        essential: true,
+      },
+      organization_name: {
+        essential: true,
+      },
+    },
+    created_at: '2025-01-12T09:30:00Z',
+    updated_at: '2025-01-12T09:30:00Z',
+  },
+  {
+    id: 'pol-003',
+    name: 'GEANT Relying Party Policy',
+    description:
+      'Metadata policy for relying parties within the GEANT academic federation trust chain.',
+    entity_type: 'openid_relying_party',
+    policy: {
+      grant_types_supported: {
+        subset_of: ['authorization_code', 'refresh_token'],
+      },
+      response_types_supported: {
+        subset_of: ['code'],
+      },
+      token_endpoint_auth_method: {
+        one_of: ['private_key_jwt'],
+      },
+    },
+    created_at: '2025-01-20T10:00:00Z',
+    updated_at: '2025-02-05T11:45:00Z',
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Trust Mark Definitions
+// ---------------------------------------------------------------------------
+
+export const mockTrustMarkDefinitions: TrustMarkDefinition[] = [
+  {
+    id: 'tmdef-001',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/eurohpc-member',
+    name: 'EuroHPC JU Member',
+    description:
+      'Issued to entities that are verified members of the EuroHPC Joint Undertaking. Recognised across all EuroHPC federations.',
+    ref: 'https://eurohpc-ju.europa.eu/about/members',
+    logo_uri: 'https://federation.eurohpc-ju.europa.eu/logos/eurohpc-member.svg',
+    allowed_issuer_ids: ['https://federation.eurohpc-ju.europa.eu'],
+    created_at: '2024-06-15T08:00:00Z',
+    updated_at: '2025-01-10T08:00:00Z',
+  },
+  {
+    id: 'tmdef-002',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/geant-verified',
+    name: 'GEANT Verified Infrastructure',
+    description:
+      'Indicates that the entity has been verified as part of the GEANT academic network infrastructure.',
+    ref: 'https://geant.org/services/trust-and-identity',
+    logo_uri: 'https://federation.eurohpc-ju.europa.eu/logos/geant-verified.svg',
+    allowed_issuer_ids: [
+      'https://federation.eurohpc-ju.europa.eu',
+      'https://trust.geant.org',
+    ],
+    created_at: '2025-01-15T10:00:00Z',
+    updated_at: '2025-01-15T10:00:00Z',
+  },
+  {
+    id: 'tmdef-003',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/prace-partner',
+    name: 'PRACE Partner Site',
+    description:
+      'Issued to hosting sites that participate in the PRACE (Partnership for Advanced Computing in Europe) programme.',
+    ref: 'https://prace-ri.eu/hpc-access/hosting-sites/',
+    logo_uri: null,
+    allowed_issuer_ids: ['https://federation.eurohpc-ju.europa.eu'],
+    created_at: '2025-01-20T12:00:00Z',
+    updated_at: '2025-02-10T08:00:00Z',
+  },
+  {
+    id: 'tmdef-004',
+    trust_mark_id: 'https://federation.eosc.eu/trust-marks/eosc-onboarded',
+    name: 'EOSC Onboarded Provider',
+    description:
+      'Marks entities that have completed the EOSC onboarding process and are listed in the EOSC Marketplace catalogue.',
+    ref: 'https://marketplace.eosc-portal.eu',
+    logo_uri: null,
+    allowed_issuer_ids: ['https://federation.eosc.eu'],
+    created_at: '2025-01-05T10:00:00Z',
+    updated_at: '2025-02-01T10:00:00Z',
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Trust Marks (issued)
+// ---------------------------------------------------------------------------
+
+export const mockTrustMarks: TrustMark[] = [
+  // ── EuroHPC Member — spans both federations ─────────────────────────────
+  {
+    id: 'tm-001',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/eurohpc-member',
+    subject_entity_id: 'https://federation.lumi.csc.fi',
+    issued_at: '2025-01-15T10:00:00Z',
+    expires_at: '2026-01-15T10:00:00Z',
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5ldXJvaHBjLWp1LmV1cm9wYS5ldS90cnVzdC1tYXJrcy9ldXJvaHBjLW1lbWJlciIsInN1YiI6Imh0dHBzOi8vZmVkZXJhdGlvbi5sdW1pLmNzYy5maSJ9.mock_tm_lumi_eurohpc',
+    status: 'active',
+    revoked_at: null,
+    revocation_reason: null,
+  },
+  {
+    id: 'tm-002',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/eurohpc-member',
+    subject_entity_id: 'https://federation.cscs.ch',
+    issued_at: '2025-01-15T10:00:00Z',
+    expires_at: '2026-01-15T10:00:00Z',
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5ldXJvaHBjLWp1LmV1cm9wYS5ldS90cnVzdC1tYXJrcy9ldXJvaHBjLW1lbWJlciIsInN1YiI6Imh0dHBzOi8vZmVkZXJhdGlvbi5jc2NzLmNoIn0.mock_tm_cscs_eurohpc',
+    status: 'active',
+    revoked_at: null,
+    revocation_reason: null,
+  },
+  {
+    id: 'tm-003',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/eurohpc-member',
+    subject_entity_id: 'https://federation.bsc.es',
+    issued_at: '2025-01-20T08:00:00Z',
+    expires_at: '2026-01-20T08:00:00Z',
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5ldXJvaHBjLWp1LmV1cm9wYS5ldS90cnVzdC1tYXJrcy9ldXJvaHBjLW1lbWJlciIsInN1YiI6Imh0dHBzOi8vZmVkZXJhdGlvbi5ic2MuZXMifQ.mock_tm_bsc_eurohpc',
+    status: 'active',
+    revoked_at: null,
+    revocation_reason: null,
+  },
+  {
+    id: 'tm-008',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/eurohpc-member',
+    subject_entity_id: 'https://federation.cineca.it',
+    issued_at: '2025-01-12T10:00:00Z',
+    expires_at: '2026-01-12T10:00:00Z',
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5ldXJvaHBjLWp1LmV1cm9wYS5ldS90cnVzdC1tYXJrcy9ldXJvaHBjLW1lbWJlciIsInN1YiI6Imh0dHBzOi8vZmVkZXJhdGlvbi5jaW5lY2EuaXQifQ.mock_tm_cineca_eurohpc',
+    status: 'active',
+    revoked_at: null,
+    revocation_reason: null,
+  },
+  {
+    id: 'tm-009',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/eurohpc-member',
+    subject_entity_id: 'https://federation.fz-juelich.de',
+    issued_at: '2025-01-14T08:00:00Z',
+    expires_at: '2026-01-14T08:00:00Z',
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5ldXJvaHBjLWp1LmV1cm9wYS5ldS90cnVzdC1tYXJrcy9ldXJvaHBjLW1lbWJlciIsInN1YiI6Imh0dHBzOi8vZmVkZXJhdGlvbi5mei1qdWVsaWNoLmRlIn0.mock_tm_jsc_eurohpc',
+    status: 'active',
+    revoked_at: null,
+    revocation_reason: null,
+  },
+
+  // ── GEANT Verified ──────────────────────────────────────────────────────
+  {
+    id: 'tm-004',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/geant-verified',
+    subject_entity_id: 'https://federation.lumi.csc.fi',
+    issued_at: '2025-01-18T12:00:00Z',
+    expires_at: '2026-01-18T12:00:00Z',
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5ldXJvaHBjLWp1LmV1cm9wYS5ldS90cnVzdC1tYXJrcy9nZWFudC12ZXJpZmllZCIsInN1YiI6Imh0dHBzOi8vZmVkZXJhdGlvbi5sdW1pLmNzYy5maSJ9.mock_tm_lumi_geant',
+    status: 'active',
+    revoked_at: null,
+    revocation_reason: null,
+  },
+  {
+    id: 'tm-005',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/geant-verified',
+    subject_entity_id: 'https://federation.desy.de',
+    issued_at: '2025-01-22T09:00:00Z',
+    expires_at: '2026-01-22T09:00:00Z',
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5ldXJvaHBjLWp1LmV1cm9wYS5ldS90cnVzdC1tYXJrcy9nZWFudC12ZXJpZmllZCIsInN1YiI6Imh0dHBzOi8vZmVkZXJhdGlvbi5kZXN5LmRlIn0.mock_tm_desy_geant',
+    status: 'active',
+    revoked_at: null,
+    revocation_reason: null,
+  },
+  {
+    id: 'tm-010',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/geant-verified',
+    subject_entity_id: 'https://federation.cineca.it',
+    issued_at: '2025-01-20T09:00:00Z',
+    expires_at: '2026-01-20T09:00:00Z',
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5ldXJvaHBjLWp1LmV1cm9wYS5ldS90cnVzdC1tYXJrcy9nZWFudC12ZXJpZmllZCIsInN1YiI6Imh0dHBzOi8vZmVkZXJhdGlvbi5jaW5lY2EuaXQifQ.mock_tm_cineca_geant',
+    status: 'active',
+    revoked_at: null,
+    revocation_reason: null,
+  },
+
+  // ── PRACE Partner ───────────────────────────────────────────────────────
+  {
+    id: 'tm-006',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/prace-partner',
+    subject_entity_id: 'https://federation.bsc.es',
+    issued_at: '2025-01-25T14:00:00Z',
+    expires_at: null,
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5ldXJvaHBjLWp1LmV1cm9wYS5ldS90cnVzdC1tYXJrcy9wcmFjZS1wYXJ0bmVyIiwic3ViIjoiaHR0cHM6Ly9mZWRlcmF0aW9uLmJzYy5lcyJ9.mock_tm_bsc_prace',
+    status: 'active',
+    revoked_at: null,
+    revocation_reason: null,
+  },
+  {
+    id: 'tm-011',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/prace-partner',
+    subject_entity_id: 'https://federation.fz-juelich.de',
+    issued_at: '2025-01-26T10:00:00Z',
+    expires_at: null,
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5ldXJvaHBjLWp1LmV1cm9wYS5ldS90cnVzdC1tYXJrcy9wcmFjZS1wYXJ0bmVyIiwic3ViIjoiaHR0cHM6Ly9mZWRlcmF0aW9uLmZ6LWp1ZWxpY2guZGUifQ.mock_tm_jsc_prace',
+    status: 'active',
+    revoked_at: null,
+    revocation_reason: null,
+  },
+
+  // ── EOSC Onboarded ──────────────────────────────────────────────────────
+  {
+    id: 'tm-012',
+    trust_mark_id: 'https://federation.eosc.eu/trust-marks/eosc-onboarded',
+    subject_entity_id: 'https://federation.cineca.it',
+    issued_at: '2025-01-10T10:00:00Z',
+    expires_at: '2026-01-10T10:00:00Z',
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5lb3NjLmV1L3RydXN0LW1hcmtzL2Vvc2Mtb25ib2FyZGVkIiwic3ViIjoiaHR0cHM6Ly9mZWRlcmF0aW9uLmNpbmVjYS5pdCJ9.mock_tm_cineca_eosc',
+    status: 'active',
+    revoked_at: null,
+    revocation_reason: null,
+  },
+  {
+    id: 'tm-013',
+    trust_mark_id: 'https://federation.eosc.eu/trust-marks/eosc-onboarded',
+    subject_entity_id: 'https://federation.tgcc.cea.fr',
+    issued_at: '2025-01-16T11:00:00Z',
+    expires_at: '2026-01-16T11:00:00Z',
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5lb3NjLmV1L3RydXN0LW1hcmtzL2Vvc2Mtb25ib2FyZGVkIiwic3ViIjoiaHR0cHM6Ly9mZWRlcmF0aW9uLnRnY2MuY2VhLmZyIn0.mock_tm_cea_eosc',
+    status: 'active',
+    revoked_at: null,
+    revocation_reason: null,
+  },
+  {
+    id: 'tm-014',
+    trust_mark_id: 'https://federation.eosc.eu/trust-marks/eosc-onboarded',
+    subject_entity_id: 'https://federation.fz-juelich.de',
+    issued_at: '2025-01-13T09:00:00Z',
+    expires_at: '2026-01-13T09:00:00Z',
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5lb3NjLmV1L3RydXN0LW1hcmtzL2Vvc2Mtb25ib2FyZGVkIiwic3ViIjoiaHR0cHM6Ly9mZWRlcmF0aW9uLmZ6LWp1ZWxpY2guZGUifQ.mock_tm_jsc_eosc',
+    status: 'active',
+    revoked_at: null,
+    revocation_reason: null,
+  },
+
+  // ── Revoked ─────────────────────────────────────────────────────────────
+  {
+    id: 'tm-007',
+    trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/eurohpc-member',
+    subject_entity_id: 'https://federation.surfsara.nl',
+    issued_at: '2025-01-10T08:00:00Z',
+    expires_at: '2026-01-10T08:00:00Z',
+    jwt: 'eyJhbGciOiJFUzI1NiJ9.eyJpZCI6Imh0dHBzOi8vZmVkZXJhdGlvbi5ldXJvaHBjLWp1LmV1cm9wYS5ldS90cnVzdC1tYXJrcy9ldXJvaHBjLW1lbWJlciIsInN1YiI6Imh0dHBzOi8vZmVkZXJhdGlvbi5zdXJmc2FyYS5ubCJ9.mock_tm_surf_eurohpc',
+    status: 'revoked',
+    revoked_at: '2025-02-20T11:00:00Z',
+    revocation_reason: 'Entity membership revoked following organisational restructuring.',
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Dashboard Stats
+// ---------------------------------------------------------------------------
+
+export const mockDashboardStats: DashboardStats = {
+  entities: {
+    total: 11,
+    by_status: {
+      active: 9,
+      draft: 1,
+      revoked: 1,
+      suspended: 0,
     },
   },
-  'fed-002': {
-    federation: {
-      id: 'fed-002',
-      name: 'Nordic HPC Alliance',
-      slug: 'nhpca',
-      status: 'active',
-    },
-    instances: {
-      total: 3,
-      active: 3,
-      online: 3,
-      offline: 0,
-      degraded: 0,
-    },
-    connections: {
-      total: 4,
-      active: 4,
-      pending: 0,
-      failed: 0,
-    },
-    transactions_24h: {
-      total: 89,
-      completed: 87,
-      failed: 1,
-      in_progress: 1,
-    },
-    active_alerts: {
-      info: 1,
-      warning: 0,
-      error: 0,
-      critical: 0,
-    },
+  statements: {
+    current: 9,
+    expiring_soon: 3,
+    expired: 1,
+  },
+  keys: {
+    active: 11,
+  },
+  trust_marks: {
+    active: 14,
+    definitions: 4,
   },
 };
 
-// Helper to simulate API delay
-export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+// ---------------------------------------------------------------------------
+// Expiring Items
+// ---------------------------------------------------------------------------
 
-// Get instances for a federation
-export const getMockInstances = (federationId: string) =>
-  mockInstances.filter(i => i.federation_id === federationId);
-
-// Get connections for a federation
-export const getMockConnections = (federationId: string) =>
-  mockConnections.filter(c => c.federation_id === federationId);
-
-// Get transactions for a federation
-export const getMockTransactions = (federationId: string) =>
-  mockTransactions.filter(t => t.federation_id === federationId);
-
-// Get alerts for a federation
-export const getMockAlerts = (federationId: string) =>
-  mockAlerts.filter(a => a.federation_id === federationId);
+export const mockExpiringItems: ExpiringItems = {
+  statements: [
+    {
+      id: 'stmt-004',
+      subject: 'https://federation.desy.de',
+      expires_at: isoDate(2 * oneDayMs),
+    },
+    {
+      id: 'stmt-002',
+      subject: 'https://federation.cscs.ch',
+      expires_at: isoDate(4 * oneDayMs),
+    },
+    {
+      id: 'stmt-001',
+      subject: 'https://federation.lumi.csc.fi',
+      expires_at: isoDate(5 * oneDayMs),
+    },
+    {
+      id: 'stmt-eosc-jsc',
+      subject: 'https://federation.fz-juelich.de',
+      expires_at: isoDate(6 * oneDayMs),
+    },
+  ],
+  trust_marks: [
+    {
+      id: 'tm-006',
+      subject: 'https://federation.bsc.es',
+      trust_mark_id: 'https://federation.eurohpc-ju.europa.eu/trust-marks/prace-partner',
+      expires_at: null,
+    },
+  ],
+};

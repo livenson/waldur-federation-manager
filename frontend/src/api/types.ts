@@ -1,243 +1,220 @@
-// Federation types
-export interface Federation {
+// Entity types
+export type EntityStatus = 'draft' | 'active' | 'suspended' | 'revoked';
+
+export interface Entity {
+  id: string;
+  entity_id: string;
+  name: string;
+  organization: string | null;
+  country: string | null;
+  entity_types: string[];
+  metadata: Record<string, unknown>;
+  jwks: { keys: JWK[] };
+  status: EntityStatus;
+  authority_hints: string[];
+  contacts: string[];
+  statement_expires_seconds: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EntityCreate {
+  entity_id: string;
+  name: string;
+  organization?: string;
+  country?: string;
+  entity_types?: string[];
+  metadata?: Record<string, unknown>;
+  authority_hints?: string[];
+  contacts?: string[];
+  statement_expires_seconds?: number;
+  jwks?: { keys: JWK[] };
+}
+
+export interface EntityUpdate {
+  name?: string;
+  organization?: string;
+  country?: string;
+  entity_types?: string[];
+  metadata?: Record<string, unknown>;
+  authority_hints?: string[];
+  contacts?: string[];
+  statement_expires_seconds?: number;
+}
+
+export interface EntityListResponse {
+  entities: Entity[];
+  total: number;
+}
+
+// Subordinate Statement
+export interface SubordinateStatement {
+  id: string;
+  issuer_entity_id: string;
+  subject_entity_id: string;
+  metadata_override: Record<string, unknown>;
+  metadata_policy: Record<string, unknown>;
+  constraints: Record<string, unknown>;
+  trust_marks: unknown[];
+  issued_at: string;
+  expires_at: string;
+  jwt: string;
+  is_current: boolean;
+}
+
+export interface StatementCreate {
+  subject_entity_id: string;
+  metadata_override?: Record<string, unknown>;
+  metadata_policy?: Record<string, unknown>;
+  constraints?: Record<string, unknown>;
+  trust_marks?: Record<string, unknown>[];
+  expires_in_seconds?: number;
+}
+
+export interface StatementListResponse {
+  statements: SubordinateStatement[];
+  total: number;
+}
+
+// Metadata Policy
+export interface MetadataPolicy {
   id: string;
   name: string;
-  slug: string;
   description: string | null;
-  logo_url: string | null;
-  public_discovery: boolean;
-  require_approval: boolean;
-  require_tos_acceptance: boolean;
-  allow_auto_join: boolean;
-  terms_of_service: string | null;
-  admin_email: string;
-  website_url: string | null;
-  tos_url: string | null;
-  tos_version: string | null;
-  status: 'active' | 'suspended' | 'archived';
+  entity_type: string;
+  policy: Record<string, unknown>;
   created_at: string;
-  instance_count: number;
-  active_connections: number;
+  updated_at: string;
 }
 
-export interface FederationCreate {
+export interface PolicyCreate {
   name: string;
-  slug: string;
   description?: string;
-  logo_url?: string;
-  public_discovery?: boolean;
-  require_approval?: boolean;
-  require_tos_acceptance?: boolean;
-  admin_email: string;
-  website_url?: string;
-  tos_url?: string;
-  tos_version?: string;
+  entity_type: string;
+  policy: Record<string, unknown>;
 }
 
-export interface FederationUpdate {
+export interface PolicyUpdate {
   name?: string;
   description?: string;
-  logo_url?: string;
-  public_discovery?: boolean;
-  require_approval?: boolean;
-  require_tos_acceptance?: boolean;
-  allow_auto_join?: boolean;
-  terms_of_service?: string;
-  admin_email?: string;
-  website_url?: string;
-  tos_url?: string;
-  tos_version?: string;
-  status?: 'active' | 'suspended' | 'archived';
+  entity_type?: string;
+  policy?: Record<string, unknown>;
 }
 
-// Instance types
-export type InstanceStatus = 'pending' | 'active' | 'suspended' | 'rejected';
-export type ConnectionStatus = 'unknown' | 'online' | 'offline' | 'degraded' | 'maintenance';
-
-export interface WaldurInstance {
-  id: string;
-  federation_id: string;
-  name: string;
-  api_url: string;
-  homepage_url: string | null;
-  uuid: string | null;
-  version: string | null;
-  organization_name: string;
-  country: string;
-  description: string | null;
-  logo_url: string | null;
-  admin_email: string;
-  capabilities: string[];
-  tags: string[];
-  status: InstanceStatus;
-  connection_status: ConnectionStatus;
-  last_seen: string | null;
-  tos_accepted: boolean;
-  offering_count: number;
-  customer_count: number;
-  project_count: number;
-  registered_at: string;
-  joined_at: string | null;
-}
-
-export interface InstanceCreate {
-  name: string;
-  api_url: string;
-  homepage_url?: string;
-  organization_name: string;
-  country: string;
-  description?: string;
-  logo_url?: string;
-  admin_email: string;
-  admin_name?: string;
-  capabilities?: string[];
-  tags?: string[];
-  api_token?: string;
-  tos_accepted?: boolean;
-}
-
-export interface InstanceDiscovery {
-  id: string;
-  name: string;
-  api_url: string;
-  organization_name: string;
-  country: string;
-  logo_url: string | null;
-  capabilities: string[];
-  connection_status: ConnectionStatus;
-  offering_count: number;
-}
-
-// Connection types
-export type ConnectionType = 'remote_customer' | 'shared_offering' | 'usage_sync';
-export type ConnectionState = 'pending' | 'active' | 'paused' | 'failed' | 'terminated';
-
-export interface FederationConnection {
-  id: string;
-  federation_id: string;
-  source_instance_id: string;
-  target_instance_id: string;
-  connection_type: ConnectionType;
-  state: ConnectionState;
-  created_at: string;
-  established_at: string | null;
-  last_activity: string | null;
-  error_count: number;
-}
-
-export interface ConnectionCreate {
-  source_instance_id: string;
-  target_instance_id: string;
-  connection_type: ConnectionType;
-  connection_metadata?: Record<string, unknown>;
-}
-
-// Transaction types
-export type TransactionType =
-  | 'customer_created'
-  | 'customer_updated'
-  | 'project_created'
-  | 'project_updated'
-  | 'resource_created'
-  | 'resource_updated'
-  | 'resource_terminated'
-  | 'order_created'
-  | 'order_approved'
-  | 'order_rejected'
-  | 'order_completed'
-  | 'order_failed'
-  | 'usage_reported'
-  | 'invoice_created'
-  | 'sync_started'
-  | 'sync_completed'
-  | 'sync_failed'
-  | 'health_check'
-  | 'connection_established'
-  | 'connection_lost';
-
-export type TransactionStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'rolled_back';
-
-export interface FederationTransaction {
-  id: string;
-  federation_id: string;
-  source_instance_id: string;
-  target_instance_id: string | null;
-  transaction_type: TransactionType;
-  status: TransactionStatus;
-  created_at: string;
-  completed_at: string | null;
-  duration_ms: number | null;
-  error_message: string | null;
-}
-
-// Alert types
-export type AlertSeverity = 'info' | 'warning' | 'error' | 'critical';
-export type AlertStatus = 'active' | 'acknowledged' | 'resolved';
-
-export interface FederationAlert {
-  id: string;
-  federation_id: string;
-  instance_id: string | null;
-  severity: AlertSeverity;
-  status: AlertStatus;
-  alert_type: string;
-  title: string;
-  description: string;
-  created_at: string;
-  acknowledged_at: string | null;
-  resolved_at: string | null;
-}
-
-// Dashboard types
-export interface DashboardStats {
-  federation: {
-    id: string;
-    name: string;
-    slug: string;
-    status: string;
-  };
-  instances: {
-    total: number;
-    active: number;
-    online: number;
-    offline: number;
-    degraded: number;
-  };
-  connections: {
-    total: number;
-    active: number;
-    pending: number;
-    failed: number;
-  };
-  transactions_24h: {
-    total: number;
-    completed: number;
-    failed: number;
-    in_progress: number;
-  };
-  active_alerts: Record<AlertSeverity, number>;
-}
-
-export interface FederationStats {
-  federation_id: string;
-  federation_slug: string;
-  instances: {
-    total: number;
-    active: number;
-    online: number;
-  };
-  connections: {
-    total: number;
-    active: number;
-  };
-  active_alerts: number;
-}
-
-// Pagination
-export interface PaginatedResponse<T> {
-  items: T[];
+export interface PolicyListResponse {
+  policies: MetadataPolicy[];
   total: number;
-  page: number;
-  page_size: number;
-  has_more: boolean;
+}
+
+export interface EntityComplianceResult {
+  entity_id: string;
+  entity_name: string;
+  entity_url: string;
+  status: 'compliant' | 'non_compliant' | 'error';
+  violations: string[];
+}
+
+export interface PolicyEvaluationResponse {
+  policy_id: string;
+  policy_name: string;
+  entity_type: string;
+  total_entities: number;
+  compliant: number;
+  non_compliant: number;
+  results: EntityComplianceResult[];
+}
+
+// Trust Mark
+export type TrustMarkStatus = 'active' | 'revoked';
+
+export interface TrustMarkDefinition {
+  id: string;
+  trust_mark_id: string;
+  name: string;
+  description: string | null;
+  ref: string | null;
+  logo_uri: string | null;
+  allowed_issuer_ids: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TrustMarkDefinitionCreate {
+  trust_mark_id: string;
+  name: string;
+  description?: string;
+  ref?: string;
+  logo_uri?: string;
+  allowed_issuer_ids?: string[];
+}
+
+export interface TrustMark {
+  id: string;
+  trust_mark_id: string;
+  subject_entity_id: string;
+  issued_at: string;
+  expires_at: string | null;
+  jwt: string;
+  status: TrustMarkStatus;
+  revoked_at: string | null;
+  revocation_reason: string | null;
+}
+
+export interface TrustMarkIssue {
+  trust_mark_id: string;
+  subject_entity_id: string;
+  expires_in_seconds?: number;
+}
+
+export interface TrustMarkListResponse {
+  trust_marks: TrustMark[];
+  total: number;
+}
+
+export interface TrustMarkDefinitionListResponse {
+  definitions: TrustMarkDefinition[];
+  total: number;
+}
+
+// Signing Key
+export interface JWK {
+  kty: string;
+  kid: string;
+  alg?: string;
+  use?: string;
+  [key: string]: unknown;
+}
+
+// Health / Dashboard
+export interface DashboardStats {
+  entities: {
+    total: number;
+    by_status: Record<string, number>;
+  };
+  statements: {
+    current: number;
+    expiring_soon: number;
+    expired: number;
+  };
+  keys: {
+    active: number;
+  };
+  trust_marks: {
+    active: number;
+    definitions: number;
+  };
+}
+
+export interface ExpiringItems {
+  statements: {
+    id: string;
+    subject: string;
+    expires_at: string;
+  }[];
+  trust_marks: {
+    id: string;
+    subject: string;
+    trust_mark_id: string;
+    expires_at: string | null;
+  }[];
 }

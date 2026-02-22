@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    """Application settings for OpenID Federation Trust Anchor."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -20,21 +20,19 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite+aiosqlite:///./data/federation.db"
 
-    # API
-    api_v1_prefix: str = "/api/v1"
-
     # CORS
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 
-    # Security
+    # OpenID Federation Trust Anchor
+    entity_id: str = "https://federation.waldur.example.com"
     secret_key: str = "change-me-in-production"
+    default_statement_lifetime_seconds: int = 604800  # 7 days
+    default_key_algorithm: str = "ES256"
+    trust_chain_max_depth: int = 5
 
-    # Sync settings
-    sync_interval_minutes: int = 60
-    sync_timeout_seconds: int = 300
-
-    # Export settings
-    export_max_offerings: int = 1000
+    # Background tasks
+    statement_refresh_interval_hours: int = 24
+    expiry_warning_days: int = 3
 
 
 @lru_cache
