@@ -179,6 +179,10 @@ cd frontend && npm run build     # Output in dist/
 - `shared_offering` - Share service offerings
 - `usage_sync` - Synchronize usage and billing data
 
+## Documentation
+
+- **[User Guide](docs/user-guide.md)** — Comprehensive guide for federation administrators with screenshots covering all pages: Dashboard, Entities, Trust Chain Explorer, Policies, Trust Marks, Keys, and Health.
+
 ## License
 
-[Add license information]
+MIT — see [LICENSE](LICENSE) for details.
