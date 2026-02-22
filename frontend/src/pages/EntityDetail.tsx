@@ -131,6 +131,41 @@ export default function EntityDetail() {
               </pre>
             </div>
           )}
+          {(() => {
+            const currentStmt = statementsData?.statements.find(s => s.is_current);
+            if (!currentStmt?.metadata_policy || Object.keys(currentStmt.metadata_policy).length === 0) return null;
+            return (
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase">Federation Policy <HelpTip text="Rules the Trust Anchor enforces on this entity's metadata. Each operator (essential, one_of, add, etc.) constrains what values the entity may publish." /></label>
+                <div className="bg-gray-50 p-3 rounded mt-1 space-y-2">
+                  {Object.entries(currentStmt.metadata_policy).map(([entityType, attributes]) => {
+                    const attrs = attributes as Record<string, unknown> | null;
+                    return (
+                    <div key={entityType}>
+                      <div className="text-xs font-semibold text-gray-700">{entityType.replace(/_/g, ' ')}</div>
+                      {attrs && typeof attrs === 'object' && (
+                        <dl className="ml-3 mt-1 space-y-0.5">
+                          {Object.entries(attrs).map(([attr, operators]) => (
+                            <div key={attr} className="flex items-start gap-2 text-xs">
+                              <dt className="font-mono text-gray-800 shrink-0">{attr}</dt>
+                              <dd className="text-gray-600">
+                                {operators && typeof operators === 'object'
+                                  ? Object.entries(operators as Record<string, unknown>)
+                                      .map(([op, val]) => `${op}: ${JSON.stringify(val)}`)
+                                      .join(', ')
+                                  : JSON.stringify(operators)}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      )}
+                    </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -150,6 +185,56 @@ export default function EntityDetail() {
                   <div className="text-xs text-gray-500">
                     Issued: {new Date(stmt.issued_at).toLocaleString()} · Expires: {new Date(stmt.expires_at).toLocaleString()}
                   </div>
+
+                  {stmt.metadata_policy && Object.keys(stmt.metadata_policy).length > 0 && (
+                    <div className="mt-3">
+                      <label className="text-xs font-medium text-gray-500 uppercase">Metadata Policy <HelpTip text="Rules the Trust Anchor enforces on this entity's metadata. Each operator (essential, one_of, add, etc.) constrains what values the entity may publish." /></label>
+                      <div className="bg-gray-50 p-3 rounded mt-1 space-y-2">
+                        {Object.entries(stmt.metadata_policy).map(([entityType, attributes]) => {
+                          const attrs = attributes as Record<string, unknown> | null;
+                          return (
+                          <div key={entityType}>
+                            <div className="text-xs font-semibold text-gray-700">{entityType.replace(/_/g, ' ')}</div>
+                            {attrs && typeof attrs === 'object' && (
+                              <dl className="ml-3 mt-1 space-y-0.5">
+                                {Object.entries(attrs).map(([attr, operators]) => (
+                                  <div key={attr} className="flex items-start gap-2 text-xs">
+                                    <dt className="font-mono text-gray-800 shrink-0">{attr}</dt>
+                                    <dd className="text-gray-600">
+                                      {operators && typeof operators === 'object'
+                                        ? Object.entries(operators as Record<string, unknown>)
+                                            .map(([op, val]) => `${op}: ${JSON.stringify(val)}`)
+                                            .join(', ')
+                                        : JSON.stringify(operators)}
+                                    </dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            )}
+                          </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {stmt.metadata_override && Object.keys(stmt.metadata_override).length > 0 && (
+                    <div className="mt-3">
+                      <label className="text-xs font-medium text-gray-500 uppercase">Metadata Override <HelpTip text="Values set here by the Trust Anchor replace whatever the entity itself publishes. Used to correct or standardise fields like organization name across the federation." /></label>
+                      <pre className="text-xs bg-gray-50 p-3 rounded mt-1 overflow-auto max-h-48">
+                        {JSON.stringify(stmt.metadata_override, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+
+                  {stmt.constraints && Object.keys(stmt.constraints).length > 0 && (
+                    <div className="mt-3">
+                      <label className="text-xs font-medium text-gray-500 uppercase">Constraints <HelpTip text="Limits on the entity's role in the trust chain. max_path_length controls how many levels of subordinates it may have (0 = leaf entity, no further delegation)." /></label>
+                      <pre className="text-xs bg-gray-50 p-3 rounded mt-1 overflow-auto max-h-48">
+                        {JSON.stringify(stmt.constraints, null, 2)}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

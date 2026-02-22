@@ -24,6 +24,7 @@ export function TrustAnchorNode({ data, selected }: TrustAnchorNodeProps) {
       {entity.organization && (
         <div className="text-xs text-gray-500 mt-0.5">{entity.organization}</div>
       )}
+      <Handle type="target" position={Position.Top} className="!bg-indigo-500" />
       <Handle type="source" position={Position.Bottom} className="!bg-indigo-500" />
     </div>
   );

@@ -35,7 +35,7 @@ export function WaldurInstanceNode({ data, selected }: WaldurInstanceNodeProps) 
         selected ? 'ring-2 ring-indigo-300' : ''
       }`}
     >
-      <Handle type="source" position={Position.Top} className="!bg-gray-400" />
+      <Handle type="source" position={Position.Bottom} className="!bg-gray-400" />
       <div className="flex items-center gap-2 mb-1.5">
         <span className={`w-2.5 h-2.5 rounded-full ${statusDot} flex-shrink-0`} />
         <Server className="w-4 h-4 text-gray-500" />
