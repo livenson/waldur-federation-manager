@@ -5,7 +5,6 @@ import time
 import uuid
 
 import httpx
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -15,11 +14,15 @@ from app.keys.manager import generate_key, get_active_key, get_entity_jwks
 from app.scenarios import register
 from app.scenarios.schemas import ScenarioMeta, ScenarioStepResult
 
-MOCK_URL = "http://localhost:8000"
+MOCK_URL = "http://localhost:9501"
 
 
 def _entity_id() -> str:
     return f"https://scenario-{uuid.uuid4().hex[:12]}.example.com"
+
+
+def _isd_source() -> str:
+    return f"scenario-isd-{uuid.uuid4().hex[:8]}"
 
 
 def _step(name: str, status: str, detail: str, start: float) -> ScenarioStepResult:
@@ -45,7 +48,12 @@ async def _check_mock_reachable() -> tuple[bool, str]:
 async def _create_scenario_entity(
     session: AsyncSession, name: str
 ) -> tuple[Entity, str]:
-    """Helper: create and activate a scenario entity with keys."""
+    """Helper: create and activate a scenario entity with keys + subordinate statement."""
+    from datetime import datetime, timedelta
+    from sqlalchemy import select
+    from app.core.models.entity import SubordinateStatement
+    from app.federation.jwt_builder import build_subordinate_statement
+
     settings = get_settings()
     eid = _entity_id()
     entity = Entity(
@@ -65,18 +73,45 @@ async def _create_scenario_entity(
     entity.jwks = json.dumps(jwks)
     session.add(entity)
     await session.commit()
+
+    # Issue subordinate statement so the TA fetch endpoint can serve this entity's JWKS
+    ta_result = await session.execute(
+        select(Entity).where(Entity.entity_id == settings.entity_id)
+    )
+    ta = ta_result.scalars().first()
+    if ta:
+        ta_key = await get_active_key(session, ta.id)
+        if ta_key:
+            jwt_token = build_subordinate_statement(
+                issuer_entity_id=settings.entity_id,
+                subject_entity_id=eid,
+                signing_key=ta_key,
+                subject_jwks=jwks,
+            )
+            now = datetime.utcnow()
+            stmt = SubordinateStatement(
+                issuer_id=ta.id,
+                subject_id=entity.id,
+                issuer_entity_id=settings.entity_id,
+                subject_entity_id=eid,
+                issued_at=now,
+                expires_at=now + timedelta(seconds=settings.default_statement_lifetime_seconds),
+                jwt=jwt_token,
+                is_current=True,
+            )
+            session.add(stmt)
+            await session.commit()
+
     return entity, eid
 
 
 async def _build_identity_jwt(session: AsyncSession, entity: Entity, user_claims: dict) -> str:
     """Build a signed identity JWT for pushing to mock Waldur."""
-    from authlib.jose import jwt as jose_jwt
+    from authlib.jose import JsonWebKey, jwt as jose_jwt
     from app.keys.manager import get_private_key_pem
 
     key = await get_active_key(session, entity.id)
     assert key, "Entity has no active key"
-
-    from authlib.jose import JsonWebKey
 
     pem = get_private_key_pem(key)
     private_key = JsonWebKey.import_key(pem, {"kty": "EC" if "ES" in key.algorithm else "RSA"})
@@ -85,12 +120,34 @@ async def _build_identity_jwt(session: AsyncSession, entity: Entity, user_claims
     header = {"alg": key.algorithm, "kid": key.kid, "typ": "JWT"}
     payload = {
         "iss": entity.entity_id,
-        "sub": user_claims.get("sub", f"user-{uuid.uuid4().hex[:8]}"),
+        "sub": user_claims.get("username", f"user-{uuid.uuid4().hex[:8]}"),
         "iat": now,
         "exp": now + 300,
         **user_claims,
     }
     return jose_jwt.encode(header, payload, private_key).decode()
+
+
+TA_URL = "http://localhost:9000"
+
+
+async def _register_entity_mapping(
+    client: httpx.AsyncClient, eid: str, isd_source: str
+) -> tuple[bool, str]:
+    """Register a federation entity mapping in mock Waldur. Returns (ok, detail)."""
+    resp = await client.post(
+        f"{MOCK_URL}/api/federation-entities/",
+        json={
+            "entity_id": eid,
+            "isd_source": isd_source,
+            "trust_anchor_url": TA_URL,
+        },
+    )
+    if resp.status_code in (200, 201):
+        return True, f"status={resp.status_code}, isd_source={isd_source}"
+    if resp.status_code == 409:
+        return True, "Already registered"
+    return False, f"status={resp.status_code}: {resp.text}"
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +162,6 @@ async def _build_identity_jwt(session: AsyncSession, entity: Entity, user_claims
     requires_mock_instances=True,
 ))
 async def identity_push(session: AsyncSession) -> list[ScenarioStepResult]:
-    settings = get_settings()
     steps: list[ScenarioStepResult] = []
 
     # Check mock reachable
@@ -129,14 +185,14 @@ async def identity_push(session: AsyncSession) -> list[ScenarioStepResult]:
         steps.append(_step("Create entity", "failed", str(exc), t))
         return steps
 
+    isd = _isd_source()
+    username = f"scenario-user-{uuid.uuid4().hex[:8]}"
+
     # Build identity JWT
     t = time.monotonic()
     try:
-        user_sub = f"scenario-user-{uuid.uuid4().hex[:8]}"
         jwt_token = await _build_identity_jwt(session, entity, {
-            "sub": user_sub,
-            "name": "Scenario Test User",
-            "email": "scenario@example.com",
+            "username": username,
         })
         assert len(jwt_token) > 50
         steps.append(_step("Build identity JWT", "passed", f"JWT length={len(jwt_token)}", t))
@@ -147,22 +203,12 @@ async def identity_push(session: AsyncSession) -> list[ScenarioStepResult]:
     # Register entity mapping in mock Waldur
     t = time.monotonic()
     try:
-        entity_jwks = json.loads(entity.jwks)
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(
-                f"{MOCK_URL}/api/federation-entities/",
-                json={
-                    "entity_id": eid,
-                    "trust_anchor_url": settings.entity_id,
-                    "jwks": entity_jwks,
-                },
-            )
-            if resp.status_code in (200, 201):
-                steps.append(_step("Register entity mapping", "passed", f"status={resp.status_code}", t))
-            elif resp.status_code == 409:
-                steps.append(_step("Register entity mapping", "passed", "Already registered", t))
+            ok, detail = await _register_entity_mapping(client, eid, isd)
+            if ok:
+                steps.append(_step("Register entity mapping", "passed", detail, t))
             else:
-                steps.append(_step("Register entity mapping", "failed", f"status={resp.status_code}: {resp.text}", t))
+                steps.append(_step("Register entity mapping", "failed", detail, t))
                 return steps
     except Exception as exc:
         steps.append(_step("Register entity mapping", "failed", str(exc), t))
@@ -176,10 +222,11 @@ async def identity_push(session: AsyncSession) -> list[ScenarioStepResult]:
                 f"{MOCK_URL}/api/identity-bridge/",
                 headers={"Authorization": f"Bearer {jwt_token}"},
                 json={
-                    "sub": user_sub,
-                    "name": "Scenario Test User",
+                    "username": username,
+                    "first_name": "Scenario",
+                    "last_name": "Test User",
                     "email": "scenario@example.com",
-                    "source_isd": eid,
+                    "organization": "Scenario Org",
                 },
             )
             if resp.status_code in (200, 201):
@@ -204,7 +251,6 @@ async def identity_push(session: AsyncSession) -> list[ScenarioStepResult]:
     requires_mock_instances=True,
 ))
 async def multi_isd_aggregation(session: AsyncSession) -> list[ScenarioStepResult]:
-    settings = get_settings()
     steps: list[ScenarioStepResult] = []
 
     # Check mock reachable
@@ -220,7 +266,9 @@ async def multi_isd_aggregation(session: AsyncSession) -> list[ScenarioStepResul
         return steps
     steps.append(_step("Check mock Waldur", "passed", detail, t))
 
-    shared_sub = f"shared-user-{uuid.uuid4().hex[:8]}"
+    shared_username = f"shared-user-{uuid.uuid4().hex[:8]}"
+    isd_a = _isd_source()
+    isd_b = _isd_source()
 
     # Create entity A
     t = time.monotonic()
@@ -244,20 +292,24 @@ async def multi_isd_aggregation(session: AsyncSession) -> list[ScenarioStepResul
     t = time.monotonic()
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # Register entity A
-            jwks_a = json.loads(entity_a.jwks)
-            await client.post(
-                f"{MOCK_URL}/api/federation-entities/",
-                json={"entity_id": eid_a, "trust_anchor_url": settings.entity_id, "jwks": jwks_a},
-            )
+            ok, detail = await _register_entity_mapping(client, eid_a, isd_a)
+            if not ok:
+                steps.append(_step("Push identity from A", "failed", f"Register failed: {detail}", t))
+                return steps
 
             jwt_a = await _build_identity_jwt(session, entity_a, {
-                "sub": shared_sub, "name": "Shared User", "email": "shared@a.example.com", "source_isd": eid_a,
+                "username": shared_username,
             })
             resp = await client.post(
                 f"{MOCK_URL}/api/identity-bridge/",
                 headers={"Authorization": f"Bearer {jwt_a}"},
-                json={"sub": shared_sub, "name": "Shared User", "email": "shared@a.example.com", "source_isd": eid_a},
+                json={
+                    "username": shared_username,
+                    "first_name": "Shared",
+                    "last_name": "User",
+                    "email": "shared@a.example.com",
+                    "organization": "Org A",
+                },
             )
             if resp.status_code in (200, 201):
                 steps.append(_step("Push identity from A", "passed", f"status={resp.status_code}", t))
@@ -272,19 +324,24 @@ async def multi_isd_aggregation(session: AsyncSession) -> list[ScenarioStepResul
     t = time.monotonic()
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            jwks_b = json.loads(entity_b.jwks)
-            await client.post(
-                f"{MOCK_URL}/api/federation-entities/",
-                json={"entity_id": eid_b, "trust_anchor_url": settings.entity_id, "jwks": jwks_b},
-            )
+            ok, detail = await _register_entity_mapping(client, eid_b, isd_b)
+            if not ok:
+                steps.append(_step("Push identity from B", "failed", f"Register failed: {detail}", t))
+                return steps
 
             jwt_b = await _build_identity_jwt(session, entity_b, {
-                "sub": shared_sub, "name": "Shared User", "affiliation": "University B", "source_isd": eid_b,
+                "username": shared_username,
             })
             resp = await client.post(
                 f"{MOCK_URL}/api/identity-bridge/",
                 headers={"Authorization": f"Bearer {jwt_b}"},
-                json={"sub": shared_sub, "name": "Shared User", "affiliation": "University B", "source_isd": eid_b},
+                json={
+                    "username": shared_username,
+                    "first_name": "Shared",
+                    "last_name": "User",
+                    "organization": "Org B",
+                    "country": "DE",
+                },
             )
             if resp.status_code in (200, 201):
                 steps.append(_step("Push identity from B", "passed", f"status={resp.status_code}", t))
@@ -295,20 +352,22 @@ async def multi_isd_aggregation(session: AsyncSession) -> list[ScenarioStepResul
         steps.append(_step("Push identity from B", "failed", str(exc), t))
         return steps
 
-    # Verify merged
+    # Verify merged — list users filtered by username, check active_isds
     t = time.monotonic()
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(f"{MOCK_URL}/api/users/{shared_sub}")
+            resp = await client.get(f"{MOCK_URL}/api/users/")
             if resp.status_code == 200:
-                user_data = resp.json()
-                sources = user_data.get("attribute_sources", user_data.get("sources", []))
-                if isinstance(sources, list) and len(sources) >= 2:
-                    steps.append(_step("Verify merged sources", "passed", f"Found {len(sources)} sources", t))
-                elif isinstance(sources, dict) and len(sources) >= 2:
-                    steps.append(_step("Verify merged sources", "passed", f"Found {len(sources)} source keys", t))
+                users = resp.json()
+                user = next((u for u in users if u["username"] == shared_username), None)
+                if user:
+                    active_isds = user.get("active_isds", [])
+                    if len(active_isds) >= 2:
+                        steps.append(_step("Verify merged sources", "passed", f"active_isds={active_isds}", t))
+                    else:
+                        steps.append(_step("Verify merged sources", "failed", f"Expected 2+ ISDs, got {active_isds}", t))
                 else:
-                    steps.append(_step("Verify merged sources", "passed", f"User exists, sources={sources}", t))
+                    steps.append(_step("Verify merged sources", "failed", f"User '{shared_username}' not found in list", t))
             else:
                 steps.append(_step("Verify merged sources", "failed", f"status={resp.status_code}: {resp.text}", t))
     except Exception as exc:

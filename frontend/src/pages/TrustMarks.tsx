@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Shield, Award } from 'lucide-react';
 import { useTrustMarkDefinitions, useTrustMarks, useIssueTrustMark, useRevokeTrustMark, useCreateTrustMarkDefinition } from '../hooks/useTrustMarks';
 import { useEntities } from '../hooks/useEntities';
@@ -6,7 +7,12 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import HelpTip, { HelpBanner } from '../components/HelpTip';
 
 export default function TrustMarks() {
-  const [tab, setTab] = useState<'definitions' | 'issued'>('definitions');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const validTabs = ['definitions', 'issued'] as const;
+  type Tab = typeof validTabs[number];
+  const tabParam = searchParams.get('tab') as Tab | null;
+  const tab: Tab = tabParam && validTabs.includes(tabParam) ? tabParam : 'definitions';
+  const setTab = (t: Tab) => setSearchParams(t === 'definitions' ? {} : { tab: t }, { replace: true });
   const [revokeTarget, setRevokeTarget] = useState<{ id: string; markId: string } | null>(null);
   const { data: definitionsData } = useTrustMarkDefinitions();
   const { data: marksData } = useTrustMarks();
