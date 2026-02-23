@@ -93,7 +93,7 @@ waldur-federation/
 │   ├── src/
 │   │   ├── api/                 # Axios client, TypeScript types, mock data, query keys
 │   │   ├── hooks/               # React Query hooks (entities, statements, policies, trust marks, health, federation, scenarios)
-│   │   ├── pages/               # Dashboard, Entities, Federation, TrustChainExplorer, Policies, TrustMarks, Keys, Health, Scenarios
+│   │   ├── pages/               # Dashboard, Entities, Federation, TrustChainExplorer, Policies, TrustMarks, Keys, Scenarios
 │   │   └── components/          # Shared UI + flow graph components (@xyflow)
 │   ├── package.json
 │   └── Dockerfile

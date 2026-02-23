@@ -30,14 +30,13 @@ The application has a persistent sidebar on the left organized into four groups:
 
 | Group | Section | Description |
 |-------|---------|-------------|
-| — | **Dashboard** | Overview of federation health, statistics, and recent activity |
+| — | **Dashboard** | Overview of federation statistics, expiring items, and recent activity |
 | **Federation** | **Topology** | Waldur instance registration, connectivity graph, and push notifications |
 | | **Entities** | Browse, register, and manage federation participants |
 | | **Trust Chain** | Interactive graph visualization of the trust hierarchy |
 | **Governance** | **Policies** | Define metadata constraints and check compliance |
 | | **Trust Marks** | Create trust mark definitions and issue marks to entities |
 | **Operations** | **Keys** | View and rotate entity signing keys |
-| | **Health** | Monitor statement expiry and system health |
 | **Debug** | **Scenarios** | Run predefined test scenarios for federation and security workflows |
 
 Each page includes **Help** buttons (marked with "?") that provide contextual tooltips explaining federation concepts.
@@ -46,11 +45,9 @@ Each page includes **Help** buttons (marked with "?") that provide contextual to
 
 ## Dashboard
 
-The Dashboard is the landing page and provides a comprehensive overview of your federation's current state.
+The Dashboard is the landing page and provides a focused overview of your federation's current state.
 
-### Overview
-
-![Dashboard overview showing stat cards, entity status, and statement health](screenshots/01-dashboard-overview.png)
+### Stat Cards
 
 The top of the dashboard displays four **stat cards**:
 
@@ -61,45 +58,24 @@ The top of the dashboard displays four **stat cards**:
 | **Trust Marks** | Total issued trust marks and number of definitions |
 | **Active Keys** | Total active signing keys across all entities |
 
-Below the stat cards, you'll find:
+### Federation Instances
 
-- **Federation Instances** — A summary showing how many registered Waldur instances are connected, the number of federations, and total users. Click "View Federation →" to go to the Topology page.
-- **Expiring Soon** — A warning banner listing statements and trust marks that will expire within 7 days, with their exact expiry dates. This is your primary indicator for items needing immediate attention.
-- **Entity Status** — Breakdown of entities by status: Active, Draft, Revoked, and Suspended.
-- **Statement Health** — Distribution of statements across three categories: Current (valid and not expiring soon), Expiring (within 7 days), and Expired (need renewal).
-- **Expired Statements** — Count of statements that have already expired and need renewal.
+A summary banner showing how many registered Waldur instances are connected, the number of federations, and total users. Click "View Federation →" to go to the Topology page.
 
-### Policy Compliance and Trust Mark Coverage
+### Expiring Items
 
-![Dashboard compliance section showing policy compliance and trust mark coverage](screenshots/02-dashboard-compliance.png)
+A warning banner listing statements and trust marks that will expire within 7 days, with their exact expiry dates. This is your primary indicator for items needing immediate attention.
 
-- **Policy Compliance** — Click the "Check Compliance" button to evaluate all metadata policies against registered entities. Results show which policies have violations and how many entities are non-compliant.
-- **Trust Mark Coverage** — Shows how many entities have active trust marks out of the total, broken down by trust mark definition (e.g., "EuroHPC JU Member", "GEANT Verified Infrastructure").
-- **Geographic Distribution** — Country-code breakdown of where federation entities are located.
-- **Entity Type Distribution** — Shows the mix of entity types (federation_entity, openid_provider, etc.).
-- **Federation Tree** — Summary of the hierarchy: number of Trust Anchors, Intermediaries, and Leaf entities.
-- **Key Algorithms** — Distribution of signing key algorithms in use (e.g., ES256).
+### Recent Activity
 
-### Compliance Results
+A chronological feed of recent federation events (statement issuance, entity registrations, trust mark issuance/revocation) with relative timestamps.
 
-![Dashboard compliance results showing policy evaluation outcomes](screenshots/04-dashboard-compliance-results.png)
+### Quick Actions
 
-After clicking "Check Compliance", the Policy Compliance section expands to show per-policy results:
-
-- Each policy displays a ratio (e.g., "6 of 9 compliant") and lists the number of non-compliant entities.
-- Policies with zero violations show a clean compliance status.
-- Use these results to identify which entities need metadata updates.
-
-### Recent Activity and Quick Actions
-
-![Dashboard activity section showing recent federation events and quick action links](screenshots/03-dashboard-activity.png)
-
-- **Recent Activity** — A chronological feed of recent federation events (statement issuance, entity registrations, key rotations) with relative timestamps.
-- **Quick Actions** — Shortcut links to common tasks:
-  - Register Entity
-  - View Trust Chain
-  - Manage Policies
-  - Health Check
+Shortcut links to common tasks:
+- Register Entity
+- View Trust Chain
+- Manage Policies
 
 ---
 
@@ -452,46 +428,6 @@ To rotate a key, click the **Rotate** button next to the entity. The old key is 
 | `kid` | Key ID — a unique identifier (typically based on JWK Thumbprint, RFC 7638) |
 | `use` | Usage — `sig` for signing |
 | `crv` | Curve — P-256 for ES256 keys |
-
----
-
-## Health Monitoring
-
-The Health page provides a focused view of items that need attention.
-
-### System Health
-
-![Health page showing statement health, expiring items, and attention warnings](screenshots/22-health-overview.png)
-
-The page is organized into sections:
-
-#### Attention Required
-
-A prominent banner at the top highlights critical issues:
-- Number of expired statements that need renewal
-- Number of items expiring soon (within 7 days)
-
-#### Statement Health
-
-Three status counters showing the distribution of statements:
-- **Current** — Valid and not expiring soon
-- **Expiring Soon** — Valid but expiring within 7 days
-- **Expired** — Past their expiry date and need renewal
-
-#### Expiring Within 7 Days
-
-Detailed lists of items approaching expiry:
-
-**Statements** — Each entry shows:
-- The subject entity's Entity ID
-- The exact expiry timestamp
-
-**Trust Marks** — Each entry shows:
-- The subject entity's Entity ID
-- The trust mark definition URI
-- The expiry timestamp
-
-Use this page for daily operational monitoring. Statements that expire without renewal break the trust chain for the affected entities — their subordinate status can no longer be cryptographically verified by relying parties.
 
 ---
 

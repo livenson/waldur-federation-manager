@@ -40,7 +40,7 @@ backend/app/
 │       ├── entity_management.py    # /api/entities — CRUD, activate, suspend, revoke, rotate-keys
 │       ├── statement_management.py # /api/statements — issue, list, regenerate
 │       ├── policy_management.py    # /api/policies — CRUD, evaluate compliance
-│       ├── trust_mark_management.py# /api/trust-marks — definitions, issue, revoke
+│       ├── trust_mark_management.py # /api/trust-marks — definitions, issue, revoke
 │       ├── health.py               # /api/health — dashboard stats, expiring items
 │       └── topology.py             # /api/topology — instance registration, topology graph
 ├── federation/
@@ -95,9 +95,9 @@ frontend/src/
 │   ├── useFederation.ts        # Topology API (instances, topology graph)
 │   └── useScenarios.ts         # Scenario listing and execution
 ├── pages/
-│   ├── Dashboard.tsx           # Overview: stats, health, compliance, distributions, activity
+│   ├── Dashboard.tsx           # Overview: stat cards, federation banner, expiring items, activity, quick actions
 │   ├── Entities.tsx            # Entity list with filtering
-│   ├── EntityDetail.tsx        # Single entity: details, keys, statements, policy display, actions
+│   ├── EntityDetail.tsx        # Single entity: overview, statements, trust marks, keys
 │   ├── EntityRegister.tsx      # Registration form
 │   ├── Federation.tsx          # Federation topology: instance cards, topology graph (@xyflow + Dagre)
 │   ├── TrustChainExplorer.tsx  # Interactive trust chain graph (@xyflow + Dagre)
@@ -105,11 +105,10 @@ frontend/src/
 │   ├── PolicyEditor.tsx        # Create/edit with JSON editor
 │   ├── TrustMarks.tsx          # Define, issue, revoke
 │   ├── Keys.tsx                # Key management + rotation history
-│   ├── Health.tsx              # System health + expiry timeline
 │   ├── Scenarios.tsx           # Debug scenario runner with step status
 │   └── NotFound.tsx
 └── components/
-    ├── Layout.tsx / Sidebar.tsx    # App shell with navigation
+    ├── Layout.tsx / Sidebar.tsx    # App shell with grouped navigation (7 items + debug)
     ├── DataTable.tsx               # Generic sortable/paginated table
     ├── Modal.tsx / ConfirmDialog.tsx
     ├── StatusBadge.tsx             # Color-coded status chips
@@ -127,7 +126,14 @@ frontend/src/
 
 ### Routes
 
-**Frontend**: `/` `/federation` `/entities` `/entities/register` `/entities/:id` `/trust-chain` `/policies` `/policies/new` `/policies/:id` `/trust-marks` `/keys` `/health` `/scenarios`
+**Frontend**: `/` `/federation` `/entities` `/entities/register` `/entities/:id` `/trust-chain` `/policies` `/policies/new` `/policies/:id` `/trust-marks` `/keys` `/scenarios`
+
+**Sidebar navigation** (7 items + debug):
+- Dashboard `/`
+- Federation: Topology `/federation`, Entities `/entities`, Trust Chain `/trust-chain`
+- Governance: Policies `/policies`, Trust Marks `/trust-marks`
+- Operations: Keys `/keys`
+- Debug (dev only): Scenarios `/scenarios`
 
 **Backend Management API** (prefixed `/api`): entities, statements, policies, trust-marks, health, topology, scenarios
 

@@ -9,8 +9,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
-import { Link } from 'react-router-dom';
-import { Network, Plus, Trash2, Shield, ShieldCheck, Server } from 'lucide-react';
+import { Network, Plus, Trash2, Shield, Server } from 'lucide-react';
 import {
   useTopology,
   useCreateInstance,
@@ -205,22 +204,13 @@ export default function Federation() {
             Waldur instance connectivity and federation topology
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            to="/federation/verification"
-            className="btn-secondary flex items-center gap-2"
-          >
-            <ShieldCheck className="w-4 h-4" />
-            Verification Setup
-          </Link>
-          <button
-            onClick={() => setShowRegisterModal(true)}
-            className="btn-primary flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Register Instance
-          </button>
-        </div>
+        <button
+          onClick={() => setShowRegisterModal(true)}
+          className="btn-primary flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Register Instance
+        </button>
       </div>
 
       {/* Summary bar */}

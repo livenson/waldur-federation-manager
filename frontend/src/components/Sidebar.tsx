@@ -7,10 +7,7 @@ import {
   FileText,
   Shield,
   Key,
-  Activity,
   Play,
-  ScanSearch,
-  ShieldCheck,
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { LucideIcon } from 'lucide-react';
@@ -41,7 +38,6 @@ const navGroups: NavGroup[] = [
       { name: 'Topology', href: '/federation', icon: Network },
       { name: 'Entities', href: '/entities', icon: Server },
       { name: 'Trust Chain', href: '/trust-chain', icon: GitBranch },
-      { name: 'Verification', href: '/federation/verification', icon: ShieldCheck },
     ],
   },
   {
@@ -49,14 +45,12 @@ const navGroups: NavGroup[] = [
     items: [
       { name: 'Policies', href: '/policies', icon: FileText },
       { name: 'Trust Marks', href: '/trust-marks', icon: Shield },
-      { name: 'Attributes', href: '/attributes', icon: ScanSearch },
     ],
   },
   {
     label: 'Operations',
     items: [
       { name: 'Keys', href: '/keys', icon: Key },
-      { name: 'Health', href: '/health', icon: Activity },
     ],
   },
 ];

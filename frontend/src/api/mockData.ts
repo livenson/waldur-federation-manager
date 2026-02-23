@@ -1283,7 +1283,7 @@ export const mockScenarioResults: Record<string, ScenarioRunResponse> = {
   'fed-identity-push': {
     scenario_id: 'fed-identity-push', scenario_name: 'Identity Push', status: 'partial', duration_ms: 15.0,
     steps: [
-      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:8000', duration_ms: 3.1 },
+      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:9501', duration_ms: 3.1 },
       { name: 'Create entity', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
       { name: 'Build identity JWT', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
       { name: 'Register entity mapping', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
@@ -1293,7 +1293,7 @@ export const mockScenarioResults: Record<string, ScenarioRunResponse> = {
   'fed-multi-isd': {
     scenario_id: 'fed-multi-isd', scenario_name: 'Multi-ISD Aggregation', status: 'partial', duration_ms: 12.0,
     steps: [
-      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:8000', duration_ms: 3.0 },
+      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:9501', duration_ms: 3.0 },
       { name: 'Create entity A', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
       { name: 'Create entity B', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
       { name: 'Push identity from A', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
@@ -1304,7 +1304,7 @@ export const mockScenarioResults: Record<string, ScenarioRunResponse> = {
   'sec-expired-jwt': {
     scenario_id: 'sec-expired-jwt', scenario_name: 'Expired JWT Attack', status: 'partial', duration_ms: 10.0,
     steps: [
-      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:8000', duration_ms: 3.0 },
+      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:9501', duration_ms: 3.0 },
       { name: 'Create entity', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
       { name: 'Build expired JWT', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
       { name: 'Push expired JWT', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
@@ -1313,7 +1313,7 @@ export const mockScenarioResults: Record<string, ScenarioRunResponse> = {
   'sec-invalid-signature': {
     scenario_id: 'sec-invalid-signature', scenario_name: 'Invalid Signature Attack', status: 'partial', duration_ms: 10.0,
     steps: [
-      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:8000', duration_ms: 3.0 },
+      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:9501', duration_ms: 3.0 },
       { name: 'Create entity', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
       { name: 'Build JWT with wrong key', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
       { name: 'Push invalid JWT', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
@@ -1322,7 +1322,7 @@ export const mockScenarioResults: Record<string, ScenarioRunResponse> = {
   'sec-unknown-entity': {
     scenario_id: 'sec-unknown-entity', scenario_name: 'Unknown Entity Attack', status: 'partial', duration_ms: 10.0,
     steps: [
-      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:8000', duration_ms: 3.0 },
+      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:9501', duration_ms: 3.0 },
       { name: 'Build JWT from unknown entity', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
       { name: 'Push unknown entity JWT', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
     ],
@@ -1330,7 +1330,7 @@ export const mockScenarioResults: Record<string, ScenarioRunResponse> = {
   'sec-policy-violation': {
     scenario_id: 'sec-policy-violation', scenario_name: 'Policy Violation', status: 'partial', duration_ms: 10.0,
     steps: [
-      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:8000', duration_ms: 3.0 },
+      { name: 'Check mock Waldur', status: 'skipped', detail: 'Mock Waldur unreachable at http://localhost:9501', duration_ms: 3.0 },
       { name: 'Create entity', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
       { name: 'Build JWT without email', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },
       { name: 'Push policy-violating identity', status: 'skipped', detail: 'Mock Waldur unavailable', duration_ms: 0.1 },

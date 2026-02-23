@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Play, Pause, XCircle, RotateCw } from 'lucide-react';
 import { useState } from 'react';
 import { useEntity, useActivateEntity, useSuspendEntity, useRevokeEntity, useRotateEntityKeys } from '../hooks/useEntities';
@@ -10,6 +10,7 @@ import HelpTip from '../components/HelpTip';
 export default function EntityDetail() {
   const { entityId } = useParams<{ entityId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: entity, isLoading } = useEntity(entityId!);
   const { data: statementsData } = useStatements({ subject_entity_id: entity?.entity_id });
   const { data: marksData } = useTrustMarks({ subject_entity_id: entity?.entity_id });
@@ -17,7 +18,12 @@ export default function EntityDetail() {
   const suspend = useSuspendEntity();
   const revoke = useRevokeEntity();
   const rotateKeys = useRotateEntityKeys();
-  const [activeTab, setActiveTab] = useState<'overview' | 'statements' | 'trust-marks' | 'keys'>('overview');
+
+  const validTabs = ['overview', 'statements', 'trust-marks', 'keys'] as const;
+  type Tab = typeof validTabs[number];
+  const tabParam = searchParams.get('tab') as Tab | null;
+  const activeTab: Tab = tabParam && validTabs.includes(tabParam) ? tabParam : 'overview';
+  const setActiveTab = (t: Tab) => setSearchParams(t === 'overview' ? {} : { tab: t }, { replace: true });
   const [showActivateConfirm, setShowActivateConfirm] = useState(false);
   const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
