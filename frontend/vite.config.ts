@@ -23,6 +23,12 @@ export default defineConfig({
       '/federation': {
         target: 'http://localhost:9000',
         changeOrigin: true,
+        bypass(req) {
+          // Don't proxy the bare /federation route — it's a frontend SPA page
+          if (req.url === '/federation' || req.url === '/federation/') {
+            return '/index.html';
+          }
+        },
       },
     },
   },

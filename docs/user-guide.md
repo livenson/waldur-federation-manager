@@ -26,17 +26,19 @@ This guide is written for **federation administrators** — the people responsib
 
 ## Navigation
 
-The application has a persistent sidebar on the left with seven main sections:
+The application has a persistent sidebar on the left organized into four groups:
 
-| Section | Description |
-|---------|-------------|
-| **Dashboard** | Overview of federation health, statistics, and recent activity |
-| **Entities** | Browse, register, and manage federation participants |
-| **Trust Chain** | Interactive graph visualization of the trust hierarchy |
-| **Policies** | Define metadata constraints and check compliance |
-| **Trust Marks** | Create trust mark definitions and issue marks to entities |
-| **Keys** | View and rotate entity signing keys |
-| **Health** | Monitor statement expiry and system health |
+| Group | Section | Description |
+|-------|---------|-------------|
+| — | **Dashboard** | Overview of federation health, statistics, and recent activity |
+| **Federation** | **Topology** | Waldur instance registration, connectivity graph, and push notifications |
+| | **Entities** | Browse, register, and manage federation participants |
+| | **Trust Chain** | Interactive graph visualization of the trust hierarchy |
+| **Governance** | **Policies** | Define metadata constraints and check compliance |
+| | **Trust Marks** | Create trust mark definitions and issue marks to entities |
+| **Operations** | **Keys** | View and rotate entity signing keys |
+| | **Health** | Monitor statement expiry and system health |
+| **Debug** | **Scenarios** | Run predefined test scenarios for federation and security workflows |
 
 Each page includes **Help** buttons (marked with "?") that provide contextual tooltips explaining federation concepts.
 
@@ -61,6 +63,7 @@ The top of the dashboard displays four **stat cards**:
 
 Below the stat cards, you'll find:
 
+- **Federation Instances** — A summary showing how many registered Waldur instances are connected, the number of federations, and total users. Click "View Federation →" to go to the Topology page.
 - **Expiring Soon** — A warning banner listing statements and trust marks that will expire within 7 days, with their exact expiry dates. This is your primary indicator for items needing immediate attention.
 - **Entity Status** — Breakdown of entities by status: Active, Draft, Revoked, and Suspended.
 - **Statement Health** — Distribution of statements across three categories: Current (valid and not expiring soon), Expiring (within 7 days), and Expired (need renewal).
@@ -147,6 +150,7 @@ The overview shows:
 - **Contacts** — Administrative email addresses
 - **Created / Updated** — Timestamps for tracking registration and changes
 - **Metadata** — Full JSON metadata including OpenID Provider configuration (scopes, signing algorithms, auth methods) and federation entity details
+- **Federation Policy** — If the entity has a current subordinate statement with a metadata policy, a summary is shown here. Displays the policy operators (e.g., `essential`, `one_of`, `add`) applied to each attribute, grouped by entity type. Click the help icon for an explanation of what metadata policies enforce.
 
 #### Statements Tab
 
@@ -155,8 +159,13 @@ The overview shows:
 Lists all subordinate statements where this entity is either the issuer or subject:
 
 - **From** — The issuing authority's entity ID
-- **Status** — Whether the statement is current or expired
+- **Status** — Whether the statement is current or historical
 - **Issued / Expires** — Timestamp range for the statement's validity
+- **Metadata Policy** — If present, shows the policy operators applied to each attribute, grouped by entity type (e.g., `contacts add: ["federation-ops@csc.fi"]`). These are the rules the Trust Anchor enforces on this entity's metadata.
+- **Metadata Override** — If present, shows the JSON values that the Trust Anchor sets on behalf of this entity (e.g., overriding `organization_name`).
+- **Constraints** — If present, shows constraints like `max_path_length` that limit the entity's role in the trust chain (0 = leaf entity, higher values allow further delegation).
+
+Each section includes a help tooltip explaining the concept.
 
 #### Trust Marks Tab
 
@@ -483,6 +492,120 @@ Detailed lists of items approaching expiry:
 - The expiry timestamp
 
 Use this page for daily operational monitoring. Statements that expire without renewal break the trust chain for the affected entities — their subordinate status can no longer be cryptographically verified by relying parties.
+
+---
+
+## Federation Topology
+
+The Topology page shows the registered Waldur instances that participate in the federation and their relationships to Trust Anchors.
+
+### Overview
+
+![Federation topology showing instance cards, summary stats, and topology graph](screenshots/23-federation-overview.png)
+
+The page is organized into:
+
+#### Summary Bar
+
+Five counters at the top:
+
+| Counter | Description |
+|---------|-------------|
+| **Instances** | Total registered Waldur instances |
+| **Healthy** | Instances that are reachable and responding |
+| **Federations** | Number of distinct Trust Anchors in use |
+| **Fed. Entities** | Total federation entities across all instances |
+| **Users** | Total users across all instances |
+
+#### Push + Pull Banner
+
+An info banner explaining that lifecycle changes (entity activation, suspension, revocation, and instance registration/removal) trigger push notifications to all registered instances. Instances also poll `/federation/list` as the authoritative source of truth per OIDC Federation 1.0.
+
+#### Instance Health Cards
+
+Each registered Waldur instance is shown as a card displaying:
+
+- **Status indicator** — Green dot for healthy, red for unhealthy, gray for unknown
+- **Name and Base URL** — The instance identifier and endpoint
+- **Trust Anchors** — Badges showing which federation Trust Anchors this instance trusts
+- **Entity and user counts** — How many entities and users the instance has
+- **Remove button** — Delete the instance from the federation (with confirmation dialog)
+
+#### Topology Graph
+
+An interactive graph visualization (powered by @xyflow and Dagre layout) showing:
+
+- **Trust Anchor nodes** — Purple/indigo gradient cards at the bottom representing federation roots
+- **Instance nodes** — Cards at the top with status-colored borders (green = healthy, red = unhealthy)
+- **Trust edges** — Dashed animated lines connecting instances to the Trust Anchors they trust
+
+The legend in the top-right explains the node and edge types. Click any node to open a detail panel showing connected instances or federation entities.
+
+### Registering an Instance
+
+Click "Register Instance" to add a new Waldur deployment. Provide:
+
+- **Name** — Human-readable instance name (e.g., "Waldur CSC")
+- **Base URL** — The instance's API endpoint (e.g., `http://localhost:9501`)
+
+### Removing an Instance
+
+Click the trash icon on any instance card. A confirmation dialog shows the impact: how many entities, users, and trust anchors are affected. All registered instances receive a push notification about the removal.
+
+---
+
+## Scenarios
+
+The Scenarios page provides a debug-only test runner for verifying federation workflows and security boundaries. It is only visible when the backend runs in debug mode (`DEBUG=true`).
+
+### Running Scenarios
+
+![Scenarios page showing categorized test scenarios with run buttons](screenshots/24-scenarios-list.png)
+
+Scenarios are organized into three categories:
+
+#### Trust Anchor
+
+Database-only scenarios that always work without external dependencies:
+
+| Scenario | Description |
+|----------|-------------|
+| **Register & Activate Entity** | Create an entity, activate it, and verify a subordinate statement and signing key are generated |
+| **Entity Lifecycle** | Walk an entity through the full lifecycle: create → activate → suspend → reactivate → revoke |
+| **Key Rotation** | Create and activate an entity, rotate its signing key, and verify the old key is ROTATED while the new key is ACTIVE |
+| **Trust Mark Lifecycle** | Create a trust mark definition, issue a trust mark to an entity, verify it is active, then revoke it |
+| **Instance Lifecycle** | Register a Waldur instance, verify it appears in the list, delete it, and verify removal |
+
+#### Federation
+
+Scenarios that require running mock Waldur instances (marked with a "mock instances" badge):
+
+| Scenario | Description |
+|----------|-------------|
+| **Identity Push** | Register an entity, build an identity JWT, push it to a mock Waldur instance, and verify acceptance |
+| **Multi-ISD Aggregation** | Create two entities, push the same user identity from both, and verify that attribute sources are merged |
+
+#### Security
+
+Attack vector tests that verify the federation rejects invalid or malicious requests (marked with "mock instances"):
+
+| Scenario | Description |
+|----------|-------------|
+| **Expired JWT Attack** | Build a JWT with a past expiration time and push it — expects rejection (401) |
+| **Invalid Signature Attack** | Sign a JWT with an unregistered key and push it — expects rejection (401) |
+| **Unknown Entity Attack** | Build a JWT from a non-existent entity and push it — expects rejection (401/403) |
+| **Policy Violation** | Create an entity with a metadata policy requiring email, then push with empty email — expects rejection (422) |
+
+### Scenario Results
+
+Click "Run" on any scenario to execute it. Each scenario displays step-by-step results with:
+
+- **Step name** — What was tested
+- **Status** — Passed (green), failed (red), or skipped (gray)
+- **Detail** — Description of the outcome
+- **Duration** — How long the step took
+
+The overall scenario result is shown as passed, failed, or partial.
 
 ---
 
