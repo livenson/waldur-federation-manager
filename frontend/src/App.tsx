@@ -11,7 +11,9 @@ import TrustMarks from './pages/TrustMarks';
 import Keys from './pages/Keys';
 import Federation from './pages/Federation';
 import Health from './pages/Health';
+import Attributes from './pages/Attributes';
 import Scenarios from './pages/Scenarios';
+import VerificationWizard from './pages/VerificationWizard';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -20,6 +22,7 @@ function App() {
       <Route path="/" element={<Layout />}>
         <Route index element={<Dashboard />} />
         <Route path="federation" element={<Federation />} />
+        <Route path="federation/verification" element={<VerificationWizard />} />
         <Route path="entities" element={<Entities />} />
         <Route path="entities/register" element={<EntityRegister />} />
         <Route path="entities/:entityId" element={<EntityDetail />} />
@@ -28,6 +31,7 @@ function App() {
         <Route path="policies/new" element={<PolicyEditor />} />
         <Route path="policies/:policyId" element={<PolicyEditor />} />
         <Route path="trust-marks" element={<TrustMarks />} />
+        <Route path="attributes" element={<Attributes />} />
         <Route path="keys" element={<Keys />} />
         <Route path="health" element={<Health />} />
         <Route path="scenarios" element={<Scenarios />} />
