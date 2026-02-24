@@ -100,20 +100,25 @@ frontend/src/
 │   ├── Dashboard.tsx           # Overview: stat cards, federation banner, expiring items, activity, quick actions
 │   ├── Entities.tsx            # Entity list with filtering
 │   ├── EntityDetail.tsx        # Single entity: overview, statements, trust marks, keys
-│   ├── EntityRegister.tsx      # Registration form
+│   ├── EntityRegister.tsx      # Registration form (manager only)
 │   ├── Federation.tsx          # Federation topology: instance cards, topology graph (@xyflow + Dagre)
+│   ├── JoinFederation.tsx      # 5-step wizard to join a federation (manager only)
 │   ├── TrustChainExplorer.tsx  # Interactive trust chain graph (@xyflow + Dagre)
 │   ├── Policies.tsx            # Policy list + compliance
-│   ├── PolicyEditor.tsx        # Create/edit with JSON editor
+│   ├── PolicyEditor.tsx        # Create/edit with JSON editor (manager only)
 │   ├── TrustMarks.tsx          # Define, issue, revoke
 │   ├── Keys.tsx                # Key management + rotation history
-│   ├── Scenarios.tsx           # Debug scenario runner with step status
+│   ├── Scenarios.tsx           # Debug scenario runner with step status (manager only)
 │   └── NotFound.tsx
 └── components/
-    ├── Layout.tsx / Sidebar.tsx    # App shell with grouped navigation (7 items + debug) + role switcher
+    ├── Layout.tsx / Sidebar.tsx    # App shell with grouped navigation + role switcher + entity picker
     ├── DataTable.tsx               # Generic sortable/paginated table
     ├── Modal.tsx / ConfirmDialog.tsx
     ├── StatusBadge.tsx             # Color-coded status chips
+    ├── StatCard.tsx                # Metric card with icon
+    ├── PageHeader.tsx              # Page title + description
+    ├── EmptyState.tsx              # Empty state placeholder
+    ├── LoadingSpinner.tsx          # Loading indicator
     ├── HelpTip.tsx                 # Info tooltips
     ├── JsonEditor.tsx / PolicyBuilder.tsx
     ├── TagInput.tsx                # Multi-value input
@@ -128,14 +133,17 @@ frontend/src/
 
 ### Routes
 
-**Frontend**: `/` `/federation` `/entities` `/entities/register` `/entities/:id` `/trust-chain` `/policies` `/policies/new` `/policies/:id` `/trust-marks` `/keys` `/scenarios`
+**Frontend**: `/` `/federation` `/federation/join` `/entities` `/entities/register` `/entities/:id` `/trust-chain` `/policies` `/policies/new` `/policies/:id` `/trust-marks` `/keys` `/scenarios`
 
-**Sidebar navigation** (7 items + debug):
+**Manager-only routes** (redirect members to parent page): `/federation/join`, `/entities/register`, `/policies/new`, `/policies/:id`, `/scenarios`
+
+**Sidebar navigation** (7 items + debug + conditional):
 - Dashboard `/`
+- My Entity `/entities/:memberEntityId` *(member mode only, when entity selected)*
 - Federation: Topology `/federation`, Entities `/entities`, Trust Chain `/trust-chain`
 - Governance: Policies `/policies`, Trust Marks `/trust-marks`
 - Operations: Keys `/keys`
-- Debug (dev only): Scenarios `/scenarios`
+- Debug (dev only, manager only): Scenarios `/scenarios`
 
 **Backend Management API** (prefixed `/api`): entities, statements, policies, trust-marks, health, topology, scenarios
 
