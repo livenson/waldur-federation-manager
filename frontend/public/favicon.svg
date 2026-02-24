@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Shield shape -->
+  <path d="M32 4L8 16v16c0 14.4 10.24 27.84 24 32 13.76-4.16 24-17.6 24-32V16L32 4z" fill="#4f46e5"/>
+  <path d="M32 4L8 16v16c0 14.4 10.24 27.84 24 32 13.76-4.16 24-17.6 24-32V16L32 4z" fill="none" stroke="#3730a3" stroke-width="1.5"/>
+  <!-- Federation nodes -->
+  <circle cx="32" cy="22" r="4.5" fill="white"/>
+  <circle cx="22" cy="38" r="4.5" fill="white"/>
+  <circle cx="42" cy="38" r="4.5" fill="white"/>
+  <!-- Trust chain edges -->
+  <line x1="32" y1="26.5" x2="22" y2="33.5" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <line x1="32" y1="26.5" x2="42" y2="33.5" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <line x1="22" y1="38" x2="42" y2="38" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+</svg>
