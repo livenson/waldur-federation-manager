@@ -15,6 +15,7 @@ import {
   useTopology,
   useDeleteInstance,
 } from '../hooks/useFederation';
+import { useRole } from '../contexts/RoleContext';
 import type { TopologyNode, InstanceHealth } from '../api/types';
 import { TrustAnchorNode } from '../components/flow/TrustAnchorNode';
 import { WaldurInstanceNode } from '../components/flow/WaldurInstanceNode';
@@ -96,6 +97,7 @@ export default function Federation() {
   const navigate = useNavigate();
   const { data: topology, isLoading } = useTopology();
   const deleteInstance = useDeleteInstance();
+  const { isManager } = useRole();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -191,13 +193,15 @@ export default function Federation() {
             Waldur instance connectivity and federation topology
           </p>
         </div>
-        <button
-          onClick={() => navigate('/federation/join')}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Join Federation
-        </button>
+        {isManager && (
+          <button
+            onClick={() => navigate('/federation/join')}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Join Federation
+          </button>
+        )}
       </div>
 
       {/* Summary bar */}
@@ -249,17 +253,19 @@ export default function Federation() {
 
             return (
               <div key={inst.instance_id} className="bg-white rounded-lg shadow p-4 relative">
-                <button
-                  onClick={() => {
-                    setDeleteTargetId(inst.instance_id);
-                    setShowDeleteConfirm(true);
-                  }}
-                  disabled={deleteInstance.isPending}
-                  className="absolute top-2 right-2 p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Remove instance"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {isManager && (
+                  <button
+                    onClick={() => {
+                      setDeleteTargetId(inst.instance_id);
+                      setShowDeleteConfirm(true);
+                    }}
+                    disabled={deleteInstance.isPending}
+                    className="absolute top-2 right-2 p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Remove instance"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <div className="flex items-center gap-2 mb-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${statusDot} flex-shrink-0`} />
                   <span className="font-semibold text-sm text-gray-900 truncate">
@@ -345,15 +351,19 @@ export default function Federation() {
           <Server className="w-12 h-12 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No instances registered</h3>
           <p className="text-sm text-gray-500 mb-4">
-            Register Waldur instances to see federation topology and health status.
+            {isManager
+              ? 'Register Waldur instances to see federation topology and health status.'
+              : 'Contact the federation manager to register instances.'}
           </p>
-          <button
-            onClick={() => navigate('/federation/join')}
-            className="btn-primary inline-flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Join Federation
-          </button>
+          {isManager && (
+            <button
+              onClick={() => navigate('/federation/join')}
+              className="btn-primary inline-flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Join Federation
+            </button>
+          )}
         </div>
       )}
 

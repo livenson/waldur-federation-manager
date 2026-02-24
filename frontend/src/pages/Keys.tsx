@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Key, RotateCw } from 'lucide-react';
 import { useEntities, useRotateEntityKeys } from '../hooks/useEntities';
+import { useRole } from '../contexts/RoleContext';
 import { HelpBanner } from '../components/HelpTip';
 import ConfirmDialog from '../components/ConfirmDialog';
 
@@ -9,6 +10,7 @@ export default function Keys() {
   const rotateKeys = useRotateEntityKeys();
   const entities = data?.entities ?? [];
   const [rotateTarget, setRotateTarget] = useState<{ id: string; name: string } | null>(null);
+  const { isManager, isOwnEntity } = useRole();
 
   return (
     <div>
@@ -36,13 +38,15 @@ export default function Keys() {
                   <h3 className="font-semibold text-gray-900">{entity.name}</h3>
                   <p className="text-xs text-gray-500">{entity.entity_id}</p>
                 </div>
-                <button
-                  onClick={() => setRotateTarget({ id: entity.id, name: entity.name })}
-                  className="btn-secondary flex items-center gap-1 text-sm"
-                  disabled={rotateKeys.isPending}
-                >
-                  <RotateCw className="w-4 h-4" /> Rotate
-                </button>
+                {(isManager || isOwnEntity(entity.id)) && (
+                  <button
+                    onClick={() => setRotateTarget({ id: entity.id, name: entity.name })}
+                    className="btn-secondary flex items-center gap-1 text-sm"
+                    disabled={rotateKeys.isPending}
+                  >
+                    <RotateCw className="w-4 h-4" /> Rotate
+                  </button>
+                )}
               </div>
               {entity.jwks?.keys?.length > 0 ? (
                 <div className="space-y-2">

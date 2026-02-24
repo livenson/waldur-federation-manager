@@ -1,13 +1,14 @@
 import { useMemo } from 'react';
 import {
-  Server, FileText, Shield, Key, AlertTriangle, Network, Clock,
+  Server, FileText, Shield, Key, AlertTriangle, Network, Clock, User,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDashboardStats, useExpiringItems } from '../hooks/useHealth';
 import { useTopologySummary } from '../hooks/useFederation';
-import { useEntities } from '../hooks/useEntities';
+import { useEntities, useEntity } from '../hooks/useEntities';
 import { useStatements } from '../hooks/useStatements';
 import { useTrustMarks } from '../hooks/useTrustMarks';
+import { useRole } from '../contexts/RoleContext';
 import HelpTip from '../components/HelpTip';
 
 function timeAgo(dateStr: string): string {
@@ -28,6 +29,8 @@ export default function Dashboard() {
   const { data: entitiesData } = useEntities();
   const { data: statementsData } = useStatements();
   const { data: trustMarksData } = useTrustMarks();
+  const { isManager, isMember, memberEntityId } = useRole();
+  const { data: myEntity } = useEntity(memberEntityId ?? '');
 
   const entities = entitiesData?.entities ?? [];
   const statements = statementsData?.statements ?? [];
@@ -83,6 +86,33 @@ export default function Dashboard() {
           <HelpTip className="ml-1" text="This dashboard manages an OIDC Federation trust infrastructure. A Trust Anchor sits at the root, issuing Subordinate Statements to intermediate authorities and leaf entities. Together they form a trust chain that relying parties resolve to verify identity. Trust Marks provide additional quality signals, and Metadata Policies constrain what subordinate entities can publish." />
         </p>
       </div>
+
+      {/* My Entity card — member mode */}
+      {isMember && myEntity && (
+        <div className="bg-white rounded-lg shadow p-5 mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
+              <User className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">{myEntity.name}</h3>
+              <p className="text-xs text-gray-500">
+                {myEntity.entity_id}
+                {' '}&middot;{' '}
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                  myEntity.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                }`}>{myEntity.status}</span>
+              </p>
+            </div>
+          </div>
+          <Link
+            to={`/entities/${myEntity.id}`}
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-500 whitespace-nowrap"
+          >
+            View Details &rarr;
+          </Link>
+        </div>
+      )}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -213,18 +243,29 @@ export default function Dashboard() {
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
-          <Link to="/federation/join" className="btn-primary">
-            Join Federation
-          </Link>
-          <Link to="/entities/register" className="btn-secondary">
-            Register Entity
-          </Link>
+          {isManager && (
+            <>
+              <Link to="/federation/join" className="btn-primary">
+                Join Federation
+              </Link>
+              <Link to="/entities/register" className="btn-secondary">
+                Register Entity
+              </Link>
+            </>
+          )}
           <Link to="/trust-chain" className="btn-secondary">
             View Trust Chain
           </Link>
-          <Link to="/policies" className="btn-secondary">
-            Manage Policies
-          </Link>
+          {isManager && (
+            <Link to="/policies" className="btn-secondary">
+              Manage Policies
+            </Link>
+          )}
+          {isMember && memberEntityId && (
+            <Link to={`/entities/${memberEntityId}`} className="btn-secondary">
+              My Entity
+            </Link>
+          )}
         </div>
       </div>
     </div>

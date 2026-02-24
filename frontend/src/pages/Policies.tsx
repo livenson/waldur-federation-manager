@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, FileText, ShieldCheck, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { usePolicies, useDeletePolicy, useEvaluatePolicy } from '../hooks/usePolicies';
+import { useRole } from '../contexts/RoleContext';
 import { HelpBanner } from '../components/HelpTip';
 import ConfirmDialog from '../components/ConfirmDialog';
 import type { PolicyEvaluationResponse } from '../api/types';
@@ -11,6 +12,7 @@ export default function Policies() {
   const deletePolicy = useDeletePolicy();
   const evaluatePolicy = useEvaluatePolicy();
   const policies = data?.policies ?? [];
+  const { isManager } = useRole();
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [evaluationResults, setEvaluationResults] = useState<Record<string, PolicyEvaluationResponse>>({});
   const [evaluatingId, setEvaluatingId] = useState<string | null>(null);
@@ -40,10 +42,12 @@ export default function Policies() {
           <h1 className="text-2xl font-bold text-gray-900">Metadata Policies</h1>
           <p className="text-gray-500 text-sm mt-1">Define and manage metadata policy constraints</p>
         </div>
-        <Link to="/policies/new" className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Create Policy
-        </Link>
+        {isManager && (
+          <Link to="/policies/new" className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Create Policy
+          </Link>
+        )}
       </div>
 
       <HelpBanner className="mb-6">
@@ -61,9 +65,11 @@ export default function Policies() {
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">No policies defined yet</p>
-          <Link to="/policies/new" className="text-indigo-600 text-sm hover:underline mt-1 inline-block">
-            Create your first policy
-          </Link>
+          {isManager && (
+            <Link to="/policies/new" className="text-indigo-600 text-sm hover:underline mt-1 inline-block">
+              Create your first policy
+            </Link>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -87,20 +93,22 @@ export default function Policies() {
                 </pre>
                 <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
                   <span>Updated {new Date(policy.updated_at).toLocaleDateString()}</span>
-                  <div className="flex gap-2">
-                    <Link to={`/policies/${policy.id}`} className="text-indigo-600 hover:underline">Edit</Link>
-                    <button
-                      onClick={() => setDeleteTarget({ id: policy.id, name: policy.name })}
-                      className="text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  {isManager && (
+                    <div className="flex gap-2">
+                      <Link to={`/policies/${policy.id}`} className="text-indigo-600 hover:underline">Edit</Link>
+                      <button
+                        onClick={() => setDeleteTarget({ id: policy.id, name: policy.name })}
+                        className="text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Compliance check button */}
                 <div className="border-t pt-3 mt-auto">
-                  {!evalResult && !isEvaluating && (
+                  {isManager && !evalResult && !isEvaluating && (
                     <button
                       onClick={() => handleEvaluate(policy.id)}
                       className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 rounded-md hover:bg-indigo-100 transition-colors"

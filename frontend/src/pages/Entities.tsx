@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search } from 'lucide-react';
 import { useEntities } from '../hooks/useEntities';
+import { useRole } from '../contexts/RoleContext';
 import type { EntityStatus } from '../api/types';
 import HelpTip from '../components/HelpTip';
 
@@ -9,6 +10,7 @@ export default function Entities() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const { data, isLoading } = useEntities(statusFilter ? { status: statusFilter } : undefined);
   const navigate = useNavigate();
+  const { isManager } = useRole();
 
   const entities = data?.entities ?? [];
 
@@ -22,10 +24,12 @@ export default function Entities() {
             <HelpTip className="ml-1" text="An entity is any participant in the OIDC Federation — it could be a Trust Anchor, an Intermediate Authority, an OpenID Provider, a Relying Party, or an OAuth resource. Each entity is identified by a unique URL (Entity ID) and can have one or more entity types defining its roles." />
           </p>
         </div>
-        <Link to="/entities/register" className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Register Entity
-        </Link>
+        {isManager && (
+          <Link to="/entities/register" className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Register Entity
+          </Link>
+        )}
       </div>
 
       {/* Filters */}
@@ -53,9 +57,11 @@ export default function Entities() {
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">No entities found</p>
-          <Link to="/entities/register" className="text-indigo-600 text-sm hover:underline mt-1 inline-block">
-            Register your first entity
-          </Link>
+          {isManager && (
+            <Link to="/entities/register" className="text-indigo-600 text-sm hover:underline mt-1 inline-block">
+              Register your first entity
+            </Link>
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">

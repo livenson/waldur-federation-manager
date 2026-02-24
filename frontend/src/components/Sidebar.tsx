@@ -8,9 +8,14 @@ import {
   Shield,
   Key,
   Play,
+  Crown,
+  User,
+  X,
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { LucideIcon } from 'lucide-react';
+import { useRole, type Role } from '../contexts/RoleContext';
+import { useEntities } from '../hooks/useEntities';
 
 interface NavItem {
   name: string;
@@ -88,7 +93,84 @@ function NavLinkItem({ item }: { item: NavItem }) {
   );
 }
 
+function RoleSwitcher() {
+  const { role, setRole, memberEntityId, setMemberEntityId } = useRole();
+  const { data: entitiesData } = useEntities({ status: 'active' });
+  const entities = entitiesData?.entities ?? [];
+
+  const selectedEntity = memberEntityId
+    ? entities.find(e => e.id === memberEntityId)
+    : null;
+
+  return (
+    <div className="border-t border-gray-200 px-2 lg:px-3 py-3">
+      {/* Segmented control — collapsed: icon only */}
+      <div className="flex lg:hidden justify-center mb-2">
+        <button
+          onClick={() => setRole(role === 'manager' ? 'member' : 'manager')}
+          className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+          title={role === 'manager' ? 'Manager mode' : 'Member mode'}
+        >
+          {role === 'manager' ? <Crown className="w-5 h-5" /> : <User className="w-5 h-5" />}
+        </button>
+      </div>
+
+      {/* Segmented control — expanded */}
+      <div className="hidden lg:flex bg-gray-100 rounded-lg p-0.5 mb-2">
+        {(['manager', 'member'] as Role[]).map(r => (
+          <button
+            key={r}
+            onClick={() => setRole(r)}
+            className={clsx(
+              'flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors',
+              role === r
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            )}
+          >
+            {r === 'manager' ? <Crown className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
+            <span className="capitalize">{r}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Entity picker (member mode, expanded sidebar) */}
+      {role === 'member' && (
+        <div className="hidden lg:block">
+          {!selectedEntity ? (
+            <select
+              value=""
+              onChange={e => setMemberEntityId(e.target.value || null)}
+              className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="">Select your entity...</option>
+              {entities.map(e => (
+                <option key={e.id} value={e.id}>{e.name}</option>
+              ))}
+            </select>
+          ) : (
+            <div className="flex items-center gap-1.5 bg-indigo-50 rounded-md px-2 py-1.5">
+              <Server className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span className="text-xs font-medium text-indigo-700 truncate flex-1">
+                {selectedEntity.name}
+              </span>
+              <button
+                onClick={() => setMemberEntityId(null)}
+                className="p-0.5 rounded hover:bg-indigo-100 text-indigo-400 hover:text-indigo-600"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Sidebar() {
+  const { isMember, memberEntityId } = useRole();
+
   return (
     <aside
       className={clsx(
@@ -113,6 +195,13 @@ export default function Sidebar() {
           ))}
         </div>
 
+        {/* My Entity — member mode, when entity selected */}
+        {isMember && memberEntityId && (
+          <div className="mt-2 space-y-1">
+            <NavLinkItem item={{ name: 'My Entity', href: `/entities/${memberEntityId}`, icon: User }} />
+          </div>
+        )}
+
         {/* Grouped sections */}
         {navGroups.map((group) => (
           <div key={group.label} className="mt-6">
@@ -128,8 +217,8 @@ export default function Sidebar() {
           </div>
         ))}
 
-        {/* Debug group — dev mode only */}
-        {debugGroup && (
+        {/* Debug group — dev mode only, manager only */}
+        {debugGroup && !isMember && (
           <div className="mt-6">
             <h3 className="px-3 mb-1 text-[11px] font-semibold uppercase tracking-wider text-amber-500 hidden lg:block">
               {debugGroup.label}
@@ -143,6 +232,9 @@ export default function Sidebar() {
           </div>
         )}
       </nav>
+
+      {/* Role Switcher */}
+      <RoleSwitcher />
     </aside>
   );
 }

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Plus, Shield, Award } from 'lucide-react';
 import { useTrustMarkDefinitions, useTrustMarks, useIssueTrustMark, useRevokeTrustMark, useCreateTrustMarkDefinition } from '../hooks/useTrustMarks';
 import { useEntities } from '../hooks/useEntities';
+import { useRole } from '../contexts/RoleContext';
 import ConfirmDialog from '../components/ConfirmDialog';
 import HelpTip, { HelpBanner } from '../components/HelpTip';
 
@@ -14,6 +15,7 @@ export default function TrustMarks() {
   const tab: Tab = tabParam && validTabs.includes(tabParam) ? tabParam : 'definitions';
   const setTab = (t: Tab) => setSearchParams(t === 'definitions' ? {} : { tab: t }, { replace: true });
   const [revokeTarget, setRevokeTarget] = useState<{ id: string; markId: string } | null>(null);
+  const { isManager } = useRole();
   const { data: definitionsData } = useTrustMarkDefinitions();
   const { data: marksData } = useTrustMarks();
   const { data: entitiesData } = useEntities({ status: 'active' });
@@ -77,14 +79,16 @@ export default function TrustMarks() {
           <h1 className="text-2xl font-bold text-gray-900">Trust Marks</h1>
           <p className="text-gray-500 text-sm mt-1">Manage trust mark definitions and issuance</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => setShowDefForm(true)} className="btn-secondary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Definition
-          </button>
-          <button onClick={() => setShowIssueForm(true)} className="btn-primary flex items-center gap-2">
-            <Shield className="w-4 h-4" /> Issue Mark
-          </button>
-        </div>
+        {isManager && (
+          <div className="flex gap-2">
+            <button onClick={() => setShowDefForm(true)} className="btn-secondary flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Definition
+            </button>
+            <button onClick={() => setShowIssueForm(true)} className="btn-primary flex items-center gap-2">
+              <Shield className="w-4 h-4" /> Issue Mark
+            </button>
+          </div>
+        )}
       </div>
 
       <HelpBanner className="mb-6">
@@ -249,7 +253,7 @@ export default function TrustMarks() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">{new Date(mark.issued_at).toLocaleDateString()}</td>
                   <td className="px-6 py-4">
-                    {mark.status === 'active' && (
+                    {isManager && mark.status === 'active' && (
                       <button
                         onClick={() => setRevokeTarget({ id: mark.id, markId: mark.trust_mark_id })}
                         className="text-red-600 text-sm hover:underline"

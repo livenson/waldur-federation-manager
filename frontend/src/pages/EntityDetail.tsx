@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useEntity, useActivateEntity, useSuspendEntity, useRevokeEntity, useRotateEntityKeys } from '../hooks/useEntities';
 import { useStatements } from '../hooks/useStatements';
 import { useTrustMarks } from '../hooks/useTrustMarks';
+import { useRole } from '../contexts/RoleContext';
 import ConfirmDialog from '../components/ConfirmDialog';
 import HelpTip from '../components/HelpTip';
 
@@ -12,6 +13,7 @@ export default function EntityDetail() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: entity, isLoading } = useEntity(entityId!);
+  const { isManager, isOwnEntity } = useRole();
   const { data: statementsData } = useStatements({ subject_entity_id: entity?.entity_id });
   const { data: marksData } = useTrustMarks({ subject_entity_id: entity?.entity_id });
   const activate = useActivateEntity();
@@ -66,27 +68,30 @@ export default function EntityDetail() {
             {entity.status}
           </span>
         </div>
-        <div className="flex items-center gap-2 mt-4">
-          {(entity.status === 'draft' || entity.status === 'suspended') && (
-            <button onClick={() => setShowActivateConfirm(true)} className="btn-primary flex items-center gap-1 text-sm">
-              <Play className="w-4 h-4" /> Activate
+        {/* Actions: manager = all, member + own = rotate keys only, member + other = none */}
+        {(isManager || isOwnEntity(entityId!)) && (
+          <div className="flex items-center gap-2 mt-4">
+            {isManager && (entity.status === 'draft' || entity.status === 'suspended') && (
+              <button onClick={() => setShowActivateConfirm(true)} className="btn-primary flex items-center gap-1 text-sm">
+                <Play className="w-4 h-4" /> Activate
+              </button>
+            )}
+            {isManager && entity.status === 'active' && (
+              <button onClick={() => setShowSuspendConfirm(true)} className="btn-secondary flex items-center gap-1 text-sm">
+                <Pause className="w-4 h-4" /> Suspend
+              </button>
+            )}
+            {isManager && entity.status !== 'revoked' && (
+              <button onClick={() => setShowRevokeConfirm(true)} className="btn-danger flex items-center gap-1 text-sm">
+                <XCircle className="w-4 h-4" /> Revoke
+              </button>
+            )}
+            <button onClick={() => setShowRotateKeysConfirm(true)} className="btn-secondary flex items-center gap-1 text-sm">
+              <RotateCw className="w-4 h-4" /> Rotate Keys
             </button>
-          )}
-          {entity.status === 'active' && (
-            <button onClick={() => setShowSuspendConfirm(true)} className="btn-secondary flex items-center gap-1 text-sm">
-              <Pause className="w-4 h-4" /> Suspend
-            </button>
-          )}
-          {entity.status !== 'revoked' && (
-            <button onClick={() => setShowRevokeConfirm(true)} className="btn-danger flex items-center gap-1 text-sm">
-              <XCircle className="w-4 h-4" /> Revoke
-            </button>
-          )}
-          <button onClick={() => setShowRotateKeysConfirm(true)} className="btn-secondary flex items-center gap-1 text-sm">
-            <RotateCw className="w-4 h-4" /> Rotate Keys
-          </button>
-          <HelpTip text="Entity lifecycle: Draft (not yet published) → Active (participating in trust chain, statements can be issued) → Suspended (temporarily excluded, can be reactivated) → Revoked (permanently removed, all statements and trust marks invalidated). Key rotation generates a new signing key pair without changing status." />
-        </div>
+            <HelpTip text="Entity lifecycle: Draft (not yet published) → Active (participating in trust chain, statements can be issued) → Suspended (temporarily excluded, can be reactivated) → Revoked (permanently removed, all statements and trust marks invalidated). Key rotation generates a new signing key pair without changing status." />
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
