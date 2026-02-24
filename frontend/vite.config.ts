@@ -24,8 +24,9 @@ export default defineConfig({
         target: 'http://localhost:9000',
         changeOrigin: true,
         bypass(req) {
-          // Don't proxy the bare /federation route — it's a frontend SPA page
-          if (req.url === '/federation' || req.url === '/federation/') {
+          // Don't proxy frontend SPA routes under /federation
+          const spaRoutes = ['/federation', '/federation/', '/federation/join'];
+          if (spaRoutes.includes(req.url ?? '')) {
             return '/index.html';
           }
         },

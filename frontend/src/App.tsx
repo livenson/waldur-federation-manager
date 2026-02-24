@@ -10,6 +10,7 @@ import PolicyEditor from './pages/PolicyEditor';
 import TrustMarks from './pages/TrustMarks';
 import Keys from './pages/Keys';
 import Federation from './pages/Federation';
+import JoinFederation from './pages/JoinFederation';
 import Scenarios from './pages/Scenarios';
 import NotFound from './pages/NotFound';
 
@@ -19,6 +20,7 @@ function App() {
       <Route path="/" element={<Layout />}>
         <Route index element={<Dashboard />} />
         <Route path="federation" element={<Federation />} />
+        <Route path="federation/join" element={<JoinFederation />} />
         <Route path="entities" element={<Entities />} />
         <Route path="entities/register" element={<EntityRegister />} />
         <Route path="entities/:entityId" element={<EntityDetail />} />

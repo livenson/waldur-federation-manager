@@ -143,9 +143,47 @@ export const entityApi = {
       await delay(MOCK_DELAY);
       const idx = mockEntities.findIndex((e) => e.id === id);
       if (idx === -1) throw new Error(`Entity '${id}' not found`);
-      mockEntities[idx].status = 'active';
-      mockEntities[idx].updated_at = new Date().toISOString();
-      return { ...mockEntities[idx] };
+      const entity = mockEntities[idx];
+      entity.status = 'active';
+      entity.updated_at = new Date().toISOString();
+      // Generate a signing key if the entity has none
+      if (entity.jwks.keys.length === 0) {
+        entity.jwks = {
+          keys: [{
+            kty: 'EC',
+            kid: `${entity.name.toLowerCase().replace(/\s+/g, '-')}-sig-${new Date().getFullYear()}`,
+            alg: 'ES256',
+            use: 'sig',
+            crv: 'P-256',
+            x: 'f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU',
+            y: 'x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0',
+          }],
+        };
+      }
+      // Issue a subordinate statement (mirrors real backend behavior)
+      const nowMs = Date.now();
+      const expiresInMs = (entity.statement_expires_seconds ?? 86400) * 1000;
+      const issuer = 'https://federation.eurohpc-ju.europa.eu';
+      // Mark any existing current statement for same subject as not current
+      for (const s of mockStatements) {
+        if (s.subject_entity_id === entity.entity_id && s.is_current) {
+          s.is_current = false;
+        }
+      }
+      mockStatements.push({
+        id: `stmt-${nowMs}`,
+        issuer_entity_id: issuer,
+        subject_entity_id: entity.entity_id,
+        metadata_override: {},
+        metadata_policy: {},
+        constraints: { max_path_length: 0 },
+        trust_marks: [],
+        issued_at: new Date(nowMs).toISOString(),
+        expires_at: new Date(nowMs + expiresInMs).toISOString(),
+        jwt: `eyJhbGciOiJFUzI1NiJ9.${btoa(JSON.stringify({ iss: issuer, sub: entity.entity_id }))}.mock_activate_${nowMs}`,
+        is_current: true,
+      });
+      return { ...entity };
     }
     const { data } = await api.post<Entity>(`/entities/${id}/activate`);
     return data;

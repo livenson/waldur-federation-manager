@@ -213,7 +213,10 @@ export default function Dashboard() {
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
-          <Link to="/entities/register" className="btn-primary">
+          <Link to="/federation/join" className="btn-primary">
+            Join Federation
+          </Link>
+          <Link to="/entities/register" className="btn-secondary">
             Register Entity
           </Link>
           <Link to="/trust-chain" className="btn-secondary">

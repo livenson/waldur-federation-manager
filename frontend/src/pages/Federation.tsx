@@ -9,10 +9,10 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
+import { useNavigate } from 'react-router-dom';
 import { Network, Plus, Trash2, Shield, Server } from 'lucide-react';
 import {
   useTopology,
-  useCreateInstance,
   useDeleteInstance,
 } from '../hooks/useFederation';
 import type { TopologyNode, InstanceHealth } from '../api/types';
@@ -20,7 +20,6 @@ import { TrustAnchorNode } from '../components/flow/TrustAnchorNode';
 import { WaldurInstanceNode } from '../components/flow/WaldurInstanceNode';
 import { TopologyDetailPanel } from '../components/flow/TopologyDetailPanel';
 import ConfirmDialog from '../components/ConfirmDialog';
-import Modal from '../components/Modal';
 import { HelpBanner } from '../components/HelpTip';
 
 // ---------------------------------------------------------------------------
@@ -94,13 +93,9 @@ const nodeTypes: NodeTypes = {
 // ---------------------------------------------------------------------------
 
 export default function Federation() {
+  const navigate = useNavigate();
   const { data: topology, isLoading } = useTopology();
-  const createInstance = useCreateInstance();
   const deleteInstance = useDeleteInstance();
-
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [registerName, setRegisterName] = useState('');
-  const [registerUrl, setRegisterUrl] = useState('');
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -164,14 +159,6 @@ export default function Federation() {
     setSelectedNodeId(node.id);
   }, []);
 
-  const handleRegister = async () => {
-    if (!registerName.trim() || !registerUrl.trim()) return;
-    await createInstance.mutateAsync({ name: registerName.trim(), base_url: registerUrl.trim() });
-    setRegisterName('');
-    setRegisterUrl('');
-    setShowRegisterModal(false);
-  };
-
   const handleDeleteConfirm = async () => {
     if (!deleteTargetId) return;
     await deleteInstance.mutateAsync(deleteTargetId);
@@ -205,11 +192,11 @@ export default function Federation() {
           </p>
         </div>
         <button
-          onClick={() => setShowRegisterModal(true)}
+          onClick={() => navigate('/federation/join')}
           className="btn-primary flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          Register Instance
+          Join Federation
         </button>
       </div>
 
@@ -361,59 +348,14 @@ export default function Federation() {
             Register Waldur instances to see federation topology and health status.
           </p>
           <button
-            onClick={() => setShowRegisterModal(true)}
+            onClick={() => navigate('/federation/join')}
             className="btn-primary inline-flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            Register Instance
+            Join Federation
           </button>
         </div>
       )}
-
-      {/* Register Modal */}
-      <Modal
-        isOpen={showRegisterModal}
-        onClose={() => setShowRegisterModal(false)}
-        title="Register Waldur Instance"
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input
-              type="text"
-              value={registerName}
-              onChange={(e) => setRegisterName(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="e.g. Waldur CSC"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Base URL</label>
-            <input
-              type="url"
-              value={registerUrl}
-              onChange={(e) => setRegisterUrl(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="e.g. http://localhost:9501"
-            />
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 mt-6">
-          <button
-            onClick={() => setShowRegisterModal(false)}
-            className="btn-secondary"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleRegister}
-            disabled={!registerName.trim() || !registerUrl.trim() || createInstance.isPending}
-            className="btn-primary"
-          >
-            {createInstance.isPending ? 'Registering...' : 'Register'}
-          </button>
-        </div>
-      </Modal>
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
