@@ -76,6 +76,10 @@ Thumbs.db
 # Docker
 .docker/
 
+# PID files
+*.pid
+.pids/
+
 # Temporary files
 tmp/
 temp/
