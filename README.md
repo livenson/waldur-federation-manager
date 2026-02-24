@@ -10,6 +10,7 @@ An **OpenID Federation 1.0 Trust Anchor** service for coordinating multiple Wald
 - **Trust Marks** — Define, issue, and revoke trust marks for entity compliance
 - **Key Management** — ES256/RS256 signing keys with rotation, encrypted storage, and historical key access
 - **Federation Topology** — Register Waldur instances, visualize connectivity, push lifecycle notifications
+- **Role-Based UI** — Manager/Member mode switcher adapts the interface per role (frontend-only, no backend auth)
 - **Scenario Runner** — Debug-only test scenarios for federation and security workflows
 
 ## Documentation
@@ -92,6 +93,7 @@ waldur-federation/
 ├── frontend/
 │   ├── src/
 │   │   ├── api/                 # Axios client, TypeScript types, mock data, query keys
+│   │   ├── contexts/            # React contexts (RoleContext for Manager/Member mode)
 │   │   ├── hooks/               # React Query hooks (entities, statements, policies, trust marks, health, federation, scenarios)
 │   │   ├── pages/               # Dashboard, Entities, Federation, TrustChainExplorer, Policies, TrustMarks, Keys, Scenarios
 │   │   └── components/          # Shared UI + flow graph components (@xyflow)

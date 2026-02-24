@@ -8,19 +8,55 @@ Waldur Federation is an **OpenID Federation 1.0 Trust Anchor** service that prov
 
 ### Who this guide is for
 
-This guide is written for **federation administrators** — the people responsible for:
+This guide is written for two audiences:
 
-- Registering and managing entities (OpenID Providers, Relying Parties, intermediaries)
-- Defining and enforcing metadata policies across the federation
-- Issuing and revoking trust marks
-- Monitoring statement health and key rotation
-- Visualizing and troubleshooting the trust chain hierarchy
+- **Federation Managers** — Trust Anchor administrators responsible for registering entities, enforcing metadata policies, issuing trust marks, rotating keys, and managing the federation topology.
+- **Federation Members** — Waldur instance operators who joined the federation and need read-only access to federation data, plus self-service capabilities on their own entity (e.g., key rotation).
+
+The application includes a **role switcher** (see [Role-Based UI](#role-based-ui)) that adapts the interface depending on which role you select.
 
 ### Prerequisites
 
 - Access to the Waldur Federation web interface (typically at your organization's deployment URL)
 - Basic understanding of OpenID Connect concepts (providers, relying parties, tokens)
 - Administrative credentials for your federation instance
+
+---
+
+## Role-Based UI
+
+The application provides a **Manager/Member role switcher** at the bottom of the sidebar. This is a frontend-only UI feature that adapts which actions are visible — it is not a security boundary and does not enforce backend authentication.
+
+### Roles
+
+| Role | Access | Default |
+|------|--------|---------|
+| **Manager** | Full access to all pages and actions. This is the default mode. | Yes |
+| **Member** | Read-only access to all pages, plus self-service on own entity (key rotation). Manager-only actions are hidden. | No |
+
+### Switching Roles
+
+1. At the bottom of the sidebar, find the **Manager / Member** segmented control.
+2. Click **Member** to switch to member mode.
+3. A dropdown appears — select the entity you represent from the list of active entities.
+4. The sidebar now shows a **My Entity** link (direct shortcut to your entity detail page) and hides the Scenarios section.
+5. To switch back, click **Manager** in the segmented control. All actions are restored.
+
+The selected role and entity are persisted to browser localStorage, so they survive page reloads and new sessions.
+
+### What changes in Member mode
+
+| Area | Change |
+|------|--------|
+| **Sidebar** | "My Entity" link added, Scenarios hidden |
+| **Dashboard** | "My Entity" summary card shown, "Join Federation" and "Register Entity" quick actions hidden |
+| **Entities** | "Register Entity" button hidden |
+| **Entity Detail** | Own entity: Rotate Keys only. Other entities: read-only (no action buttons) |
+| **Federation** | "Join Federation" button and instance delete icons hidden |
+| **Policies** | Create, Edit, Delete, and Evaluate buttons hidden |
+| **Trust Marks** | Definition, Issue Mark, and Revoke buttons hidden |
+| **Keys** | Rotate button shown only for own entity |
+| **Routes** | Direct navigation to `/entities/register`, `/policies/new`, `/policies/:id`, `/federation/join`, `/scenarios` redirects to the parent page |
 
 ---
 
@@ -31,13 +67,16 @@ The application has a persistent sidebar on the left organized into four groups:
 | Group | Section | Description |
 |-------|---------|-------------|
 | — | **Dashboard** | Overview of federation statistics, expiring items, and recent activity |
+| — | **My Entity** | *(Member mode only)* Direct link to your own entity detail page |
 | **Federation** | **Topology** | Waldur instance registration, connectivity graph, and push notifications |
 | | **Entities** | Browse, register, and manage federation participants |
 | | **Trust Chain** | Interactive graph visualization of the trust hierarchy |
 | **Governance** | **Policies** | Define metadata constraints and check compliance |
 | | **Trust Marks** | Create trust mark definitions and issue marks to entities |
 | **Operations** | **Keys** | View and rotate entity signing keys |
-| **Debug** | **Scenarios** | Run predefined test scenarios for federation and security workflows |
+| **Debug** | **Scenarios** | Run predefined test scenarios *(Manager mode only, dev builds)* |
+
+At the bottom of the sidebar, the **role switcher** lets you toggle between Manager and Member mode (see [Role-Based UI](#role-based-ui)).
 
 Each page includes **Help** buttons (marked with "?") that provide contextual tooltips explaining federation concepts.
 
@@ -70,12 +109,19 @@ A warning banner listing statements and trust marks that will expire within 7 da
 
 A chronological feed of recent federation events (statement issuance, entity registrations, trust mark issuance/revocation) with relative timestamps.
 
+### My Entity Card (Member mode)
+
+When in Member mode with an entity selected, a summary card appears at the top of the dashboard showing the entity's name, Entity ID, and current status, with a link to its detail page.
+
 ### Quick Actions
 
-Shortcut links to common tasks:
+Shortcut links to common tasks. In Manager mode:
+- Join Federation
 - Register Entity
 - View Trust Chain
 - Manage Policies
+
+In Member mode, only "View Trust Chain" and "My Entity" are shown.
 
 ---
 
@@ -121,7 +167,7 @@ Clicking on an entity row opens the detail page with four tabs.
 The overview shows:
 
 - **Entity header** — Name, Entity ID URL, organization, country, and status badge
-- **Action buttons** — Suspend, Revoke, and Rotate Keys (available for active entities)
+- **Action buttons** — Suspend, Revoke, and Rotate Keys (Manager mode). In Member mode, only Rotate Keys is shown for your own entity; other entities are read-only.
 - **Entity Types** — The roles this entity plays in the federation
 - **Contacts** — Administrative email addresses
 - **Created / Updated** — Timestamps for tracking registration and changes
@@ -164,11 +210,11 @@ Displays the entity's signing keys:
 - **Key Type** — The cryptographic key type (e.g., EC for Elliptic Curve)
 - **Use** — Key usage (sig = signing)
 
-### Registering a New Entity
+### Registering a New Entity (Manager only)
 
 ![Entity registration form with fields for entity ID, name, organization, and types](screenshots/11-entity-register-form.png)
 
-Click "Register Entity" from the entities list to open the registration form.
+Click "Register Entity" from the entities list to open the registration form. This action is only available in Manager mode.
 
 **Required fields:**
 
@@ -290,7 +336,7 @@ The Policies page lists all defined policies. Each policy card shows:
 - **Description** — What the policy enforces
 - **Policy JSON** — The full policy definition showing claims and their operators
 - **Last Updated** — When the policy was last modified
-- **Actions** — Edit, Delete, and Check Compliance buttons
+- **Actions** — Edit, Delete, and Check Compliance buttons (Manager mode only)
 
 ### Compliance Checks
 
@@ -465,7 +511,7 @@ Each registered Waldur instance is shown as a card displaying:
 - **Name and Base URL** — The instance identifier and endpoint
 - **Trust Anchors** — Badges showing which federation Trust Anchors this instance trusts
 - **Entity and user counts** — How many entities and users the instance has
-- **Remove button** — Delete the instance from the federation (with confirmation dialog)
+- **Remove button** — Delete the instance from the federation (with confirmation dialog, Manager mode only)
 
 #### Topology Graph
 
@@ -490,9 +536,9 @@ Click the trash icon on any instance card. A confirmation dialog shows the impac
 
 ---
 
-## Scenarios
+## Scenarios (Manager only)
 
-The Scenarios page provides a debug-only test runner for verifying federation workflows and security boundaries. It is only visible when the backend runs in debug mode (`DEBUG=true`).
+The Scenarios page provides a debug-only test runner for verifying federation workflows and security boundaries. It is only visible when the backend runs in debug mode (`DEBUG=true`) and when the user is in Manager mode.
 
 ### Running Scenarios
 

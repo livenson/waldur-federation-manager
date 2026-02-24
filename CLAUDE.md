@@ -79,12 +79,14 @@ backend/app/
 
 ```
 frontend/src/
-├── App.tsx                     # React Router v6 routes
+├── App.tsx                     # React Router v6 routes + ManagerRoute guard
 ├── api/
 │   ├── client.ts               # Axios client with mock data fallback
 │   ├── types.ts                # TypeScript interfaces matching backend models
 │   ├── mockData.ts             # Sample data for development
 │   └── queryKeys.ts            # React Query key factory
+├── contexts/
+│   └── RoleContext.tsx          # Manager/Member role switcher (localStorage-persisted, useRole hook)
 ├── hooks/                      # React Query hooks
 │   ├── useEntities.ts          # Entity CRUD + status transitions
 │   ├── useStatements.ts        # Statement queries/mutations
@@ -108,7 +110,7 @@ frontend/src/
 │   ├── Scenarios.tsx           # Debug scenario runner with step status
 │   └── NotFound.tsx
 └── components/
-    ├── Layout.tsx / Sidebar.tsx    # App shell with grouped navigation (7 items + debug)
+    ├── Layout.tsx / Sidebar.tsx    # App shell with grouped navigation (7 items + debug) + role switcher
     ├── DataTable.tsx               # Generic sortable/paginated table
     ├── Modal.tsx / ConfirmDialog.tsx
     ├── StatusBadge.tsx             # Color-coded status chips
@@ -198,6 +200,8 @@ docker-compose --profile dev up  # Development (adds frontend-dev :3000 with hot
 **Federation Topology**: WaldurInstance model tracks registered Waldur deployments. Topology API builds a graph of instances and their trust anchor relationships. Push notifications sent on lifecycle events (entity activation/suspension/revocation, instance registration/removal).
 
 **Scenarios**: Debug-only (`DEBUG=true`) scenario runner. Scenarios are registered via `@scenario` decorator in `backend/app/scenarios/`. Categories: trust_anchor (DB-only), federation (requires mock instances), security (attack vector tests).
+
+**Role-Based UI**: Frontend-only Manager/Member mode switcher persisted to `localStorage` (`waldur-fed-role`, `waldur-fed-member-entity-id`). `RoleContext` provides `useRole()` hook with `isManager`, `isMember`, `isOwnEntity(id)`. Manager = full access (default). Member = read-only + self-service (rotate own keys). `ManagerRoute` in `App.tsx` redirects members from `/entities/register`, `/policies/new`, `/policies/:id`, `/federation/join`, `/scenarios`. Sidebar hides Scenarios section and adds "My Entity" link in member mode. Each page conditionally hides manager-only buttons via `useRole()`. This is a UI clarity feature, not a security boundary — no backend enforcement.
 
 ## Configuration
 
